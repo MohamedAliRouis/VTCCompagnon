@@ -137,17 +137,37 @@ describe('agregerParJour', () => {
     expect(j.revenu).toBe(10);
   });
 
-  it('utilise le legacy en fallback, mais les courses dérivées priment', () => {
+  it('legacy = base ; les lignes du journal s’AJOUTENT (jour de bascule)', () => {
     const legacy = [
       { date: '2026-09-01', nbCourses: 9, tempsTotal: 9999, revenuTotal: 99 },
       { date: '2026-09-08', nbCourses: 5, tempsTotal: 5000, revenuTotal: 50 },
     ];
-    const map = agregerParJour([course('2026-09-08', 600, 10)], [], legacy);
-    // jour sans course dérivée : legacy conservé
+    const map = agregerParJour(
+      [course('2026-09-08', 600, 10)],
+      [],
+      legacy,
+      '2026-09-08', // logDepuis = jour de bascule
+    );
+    // jour antérieur : legacy seul
     expect(map.get('2026-09-01')!.revenu).toBe(99);
-    // jour avec course dérivée : legacy écrasé
-    expect(map.get('2026-09-08')!.nbCourses).toBe(1);
-    expect(map.get('2026-09-08')!.revenu).toBe(10);
+    // jour de bascule : legacy (matin) + course du journal (après-midi)
+    expect(map.get('2026-09-08')!.nbCourses).toBe(6);
+    expect(map.get('2026-09-08')!.revenu).toBe(60);
+  });
+
+  it('ignore un legacy postérieur à la bascule', () => {
+    const legacy = [
+      { date: '2026-09-10', nbCourses: 3, tempsTotal: 30, revenuTotal: 30 },
+    ];
+    const map = agregerParJour(
+      [course('2026-09-10', 600, 12)],
+      [],
+      legacy,
+      '2026-09-08',
+    );
+    // le journal fait foi : pas de double comptage avec le legacy
+    expect(map.get('2026-09-10')!.nbCourses).toBe(1);
+    expect(map.get('2026-09-10')!.revenu).toBe(12);
   });
 });
 

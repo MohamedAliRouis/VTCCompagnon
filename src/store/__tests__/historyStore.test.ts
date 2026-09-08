@@ -9,6 +9,8 @@ jest.mock('../../utils/storage', () => ({
   chargerSessionsHistorique: jest.fn(),
   sauvegarderSessionsHistorique: jest.fn(),
   chargerHistorique: jest.fn(),
+  chargerLogDepuis: jest.fn(),
+  sauvegarderLogDepuis: jest.fn(),
 }));
 
 const storage = require('../../utils/storage');
@@ -23,11 +25,14 @@ beforeEach(() => {
   storage.chargerSessionsHistorique.mockReset().mockResolvedValue([]);
   storage.sauvegarderSessionsHistorique.mockReset().mockResolvedValue(undefined);
   storage.chargerHistorique.mockReset().mockResolvedValue([]);
+  storage.chargerLogDepuis.mockReset().mockResolvedValue('2026-09-08');
+  storage.sauvegarderLogDepuis.mockReset().mockResolvedValue(undefined);
 
   useHistoryStore.setState({
     courses: [],
     sessions: [],
     agregatsLegacy: [],
+    logDepuis: '2026-09-08',
     chargement: false,
   });
 });
@@ -45,6 +50,24 @@ describe('chargerHistorique', () => {
     expect(store().courses).toHaveLength(1);
     expect(store().sessions).toHaveLength(1);
     expect(store().agregatsLegacy).toHaveLength(1);
+  });
+
+  it('fixe logDepuis au jour courant au premier lancement', async () => {
+    storage.chargerLogDepuis.mockResolvedValue(null);
+
+    await store().chargerHistorique();
+
+    expect(store().logDepuis).toBe('2026-09-08');
+    expect(storage.sauvegarderLogDepuis).toHaveBeenCalledWith('2026-09-08');
+  });
+
+  it('conserve un logDepuis déjà stocké', async () => {
+    storage.chargerLogDepuis.mockResolvedValue('2026-06-01');
+
+    await store().chargerHistorique();
+
+    expect(store().logDepuis).toBe('2026-06-01');
+    expect(storage.sauvegarderLogDepuis).not.toHaveBeenCalled();
   });
 });
 

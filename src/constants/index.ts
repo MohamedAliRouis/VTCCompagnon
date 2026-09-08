@@ -10,6 +10,7 @@ export const CLES_STOCKAGE = {
   HISTORIQUE: '@vtc_historique', // legacy : agrégats journaliers (fallback)
   COURSES_HISTORIQUE: '@vtc_courses',
   SESSIONS_HISTORIQUE: '@vtc_sessions',
+  LOG_DEPUIS: '@vtc_log_depuis', // date de bascule vers le journal détaillé
   SETTINGS: '@vtc_settings',
   SESSION_TRAVAIL: '@vtc_session_travail',
 } as const;

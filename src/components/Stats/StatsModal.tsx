@@ -26,9 +26,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({ onClose }) => {
   const courses = useHistoryStore(s => s.courses);
   const sessions = useHistoryStore(s => s.sessions);
   const agregatsLegacy = useHistoryStore(s => s.agregatsLegacy);
+  const logDepuis = useHistoryStore(s => s.logDepuis);
 
   const jours7 = useMemo(() => {
-    const parJour = agregerParJour(courses, sessions, agregatsLegacy);
+    const parJour = agregerParJour(courses, sessions, agregatsLegacy, logDepuis);
     const fin = getDateJour();
     const debut = ajouterJours(fin, -6);
     const liste = [];
@@ -39,7 +40,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({ onClose }) => {
       }
     }
     return liste.reverse();
-  }, [courses, sessions, agregatsLegacy]);
+  }, [courses, sessions, agregatsLegacy, logDepuis]);
 
   return (
     <View style={styles.overlay}>

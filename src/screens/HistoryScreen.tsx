@@ -40,9 +40,10 @@ export const HistoryScreen: React.FC = () => {
   const courses = useHistoryStore(s => s.courses);
   const sessions = useHistoryStore(s => s.sessions);
   const agregatsLegacy = useHistoryStore(s => s.agregatsLegacy);
+  const logDepuis = useHistoryStore(s => s.logDepuis);
   const objectif = useSettingsStore(s => s.settings.objectifJournalier);
 
-  const [periode, setPeriode] = useState<Periode>('semaine');
+  const [periode, setPeriode] = useState<Periode>('jour');
   const [ancre, setAncre] = useState(getDateJour());
   const [jourOuvert, setJourOuvert] = useState<string | null>(null);
 
@@ -53,8 +54,8 @@ export const HistoryScreen: React.FC = () => {
   );
 
   const parJour = useMemo(
-    () => agregerParJour(courses, sessions, agregatsLegacy),
-    [courses, sessions, agregatsLegacy],
+    () => agregerParJour(courses, sessions, agregatsLegacy, logDepuis),
+    [courses, sessions, agregatsLegacy, logDepuis],
   );
   const agregat = useMemo(
     () => agregatPeriode(parJour, periode, debut, fin),

@@ -150,16 +150,24 @@ const jourVide = (date: string): AgregatJour => ({
 });
 
 // Map date -> AgregatJour, à partir des logs bruts + fallback legacy.
-// Un jour présent dans `courses` remplace entièrement l'entrée legacy du
-// même jour (données dérivées prioritaires).
+//
+// Modèle de migration : le journal détaillé (`courses` / `sessions`) n'existe
+// qu'à partir de `logDepuis`. Les agrégats legacy servent de base pour les jours
+// <= logDepuis (le matin du jour de bascule s'y trouve encore), et les lignes du
+// journal s'y AJOUTENT — jamais de remplacement, sinon on perd les courses
+// faites avant la mise à jour le jour de bascule.
 export const agregerParJour = (
   courses: CourseHistorique[],
   sessions: SessionHistorique[],
   legacy: HistoriqueJour[] = [],
+  logDepuis?: string,
 ): Map<string, AgregatJour> => {
   const map = new Map<string, AgregatJour>();
 
   for (const l of legacy) {
+    if (logDepuis && l.date > logDepuis) {
+      continue; // au-delà de la bascule, seul le journal fait foi
+    }
     map.set(l.date, {
       ...jourVide(l.date),
       nbCourses: l.nbCourses,
@@ -168,16 +176,12 @@ export const agregerParJour = (
     });
   }
 
-  const joursDerives = new Set<string>();
   for (const c of courses) {
-    if (!joursDerives.has(c.date)) {
-      joursDerives.add(c.date);
-      map.set(c.date, jourVide(c.date));
-    }
-    const j = map.get(c.date) as AgregatJour;
+    const j = map.get(c.date) ?? jourVide(c.date);
     j.nbCourses += 1;
     j.tempsConduite += c.duree;
     j.revenu += c.revenu;
+    map.set(c.date, j);
   }
 
   for (const s of sessions) {

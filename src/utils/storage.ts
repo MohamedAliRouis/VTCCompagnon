@@ -68,6 +68,15 @@ export const chargerHistorique = async (): Promise<HistoriqueJour[]> => {
   return historique || [];
 };
 
+// Date (YYYY-MM-DD) à partir de laquelle le journal détaillé est alimenté.
+export const chargerLogDepuis = async (): Promise<string | null> => {
+  return charger<string>(CLES_STOCKAGE.LOG_DEPUIS);
+};
+
+export const sauvegarderLogDepuis = async (date: string): Promise<void> => {
+  await sauvegarder(CLES_STOCKAGE.LOG_DEPUIS, date);
+};
+
 // Journal des courses terminées
 export const chargerCoursesHistorique = async (): Promise<CourseHistorique[]> => {
   return (
