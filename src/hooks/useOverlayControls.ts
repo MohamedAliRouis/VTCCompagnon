@@ -69,7 +69,7 @@ export const useOverlayControls = (): OverlayControls => {
   // Envoie les timestamps + tarifs ; le service natif calcule le reste.
   const updateOverlay = useCallback(async (): Promise<void> => {
     if (!isSupported) return;
-    const { course } = useCourseStore.getState();
+    const { course, annulationEnAttente } = useCourseStore.getState();
     const { session } = useSessionStore.getState();
     const { tarifs } = useSettingsStore.getState().settings;
     try {
@@ -82,6 +82,7 @@ export const useOverlayControls = (): OverlayControls => {
         session.tempsDebutService || 0,
         session.tempsDebutPause || 0,
         session.tempsPauseCumule,
+        annulationEnAttente !== null,
       );
     } catch (e) {
       console.error('Erreur updateOverlay:', e);

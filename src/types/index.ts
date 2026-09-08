@@ -60,6 +60,16 @@ export interface Tarifs {
   parMinute: number;
 }
 
+// Course tout juste terminée, encore annulable pendant quelques secondes.
+export interface AnnulationCourse {
+  idHistorique: string; // ligne à retirer du journal
+  tempsDebut: number; // epoch ms, pour restaurer la course
+  duree: number; // secondes
+  revenu: number;
+  date: string; // YYYY-MM-DD sous lequel la course a été comptée
+  expireA: number; // epoch ms
+}
+
 export type DebutSemaine = 'lundi' | 'dimanche';
 
 export interface Settings {

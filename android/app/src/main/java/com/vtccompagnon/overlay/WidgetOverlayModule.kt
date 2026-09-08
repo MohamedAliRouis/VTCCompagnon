@@ -93,6 +93,7 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
         tempsDebutService: Double,
         tempsDebutPause: Double,
         tempsPauseCumule: Double,
+        annulationPossible: Boolean,
         promise: Promise
     ) {
         val context = reactApplicationContext
@@ -106,6 +107,7 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
             putExtra(WidgetOverlayService.EXTRA_TEMPS_DEBUT_SERVICE, tempsDebutService.toLong())
             putExtra(WidgetOverlayService.EXTRA_TEMPS_DEBUT_PAUSE, tempsDebutPause.toLong())
             putExtra(WidgetOverlayService.EXTRA_TEMPS_PAUSE_CUMULE, tempsPauseCumule.toLong())
+            putExtra(WidgetOverlayService.EXTRA_ANNULATION, annulationPossible)
         }
         
         try {

@@ -166,3 +166,27 @@ describe('enregistrerSession', () => {
     expect(storage.sauvegarderSessionsHistorique).toHaveBeenCalledWith(s);
   });
 });
+
+describe('supprimerCourse', () => {
+  it('retire la ligne par son id et persiste', async () => {
+    const id = await store().enregistrerCourse({
+      debut: 1000,
+      duree: 600,
+      revenu: 12,
+    });
+    expect(store().courses).toHaveLength(1);
+
+    await store().supprimerCourse(id);
+
+    expect(store().courses).toHaveLength(0);
+    expect(storage.sauvegarderCoursesHistorique).toHaveBeenLastCalledWith([]);
+  });
+
+  it('ignore un id inconnu', async () => {
+    await store().enregistrerCourse({ debut: 1000, duree: 600, revenu: 12 });
+
+    await store().supprimerCourse('inexistant');
+
+    expect(store().courses).toHaveLength(1);
+  });
+});

@@ -6,6 +6,7 @@ import {
   useStatsStore,
   useSettingsStore,
 } from '../store';
+import { getDateJour } from '../utils/formatters';
 import { useOverlayControls } from './useOverlayControls';
 
 const { WidgetOverlay } = NativeModules;
@@ -36,6 +37,8 @@ export const useWidgetOverlayBridge = (): void => {
   const clientMonte = useCourseStore(s => s.clientMonte);
   const arriveeDestination = useCourseStore(s => s.arriveeDestination);
   const annulerCourse = useCourseStore(s => s.annulerCourse);
+  const preparerAnnulation = useCourseStore(s => s.preparerAnnulation);
+  const annulerFinDeCourse = useCourseStore(s => s.annulerFinDeCourse);
   const terminerCourse = useStatsStore(s => s.terminerCourse);
   const commencerService = useSessionStore(s => s.commencerService);
   const mettreEnPause = useSessionStore(s => s.mettreEnPause);
@@ -52,6 +55,7 @@ export const useWidgetOverlayBridge = (): void => {
     s => s.settings.tarifs.priseEnCharge,
   );
   const tarifParMinute = useSettingsStore(s => s.settings.tarifs.parMinute);
+  const annulationActive = useCourseStore(s => s.annulationEnAttente !== null);
 
   // Snapshot lu par les callbacks natifs : évite de réabonner le
   // NativeEventEmitter à chaque changement d'état.
@@ -61,6 +65,7 @@ export const useWidgetOverlayBridge = (): void => {
     sessionEtat,
     tarifPriseEnCharge,
     tarifParMinute,
+    annulationActive,
   });
   stateRef.current = {
     courseEtat,
@@ -68,6 +73,7 @@ export const useWidgetOverlayBridge = (): void => {
     sessionEtat,
     tarifPriseEnCharge,
     tarifParMinute,
+    annulationActive,
   };
 
   const handleActionPrincipale = useCallback(() => {
@@ -95,11 +101,21 @@ export const useWidgetOverlayBridge = (): void => {
         const { tarifPriseEnCharge: pec, tarifParMinute: min } =
           stateRef.current;
         const [tempsEcoule, revenu] = calcTempsEtRevenu(cDebut, pec, min);
-        terminerCourse({
-          tempsEcoule,
-          revenu,
-          debut: cDebut ?? Date.now() - tempsEcoule * 1000,
-        });
+        const debut = cDebut ?? Date.now() - tempsEcoule * 1000;
+        // Ouvre la fenêtre d'annulation une fois la course journalisée : le
+        // widget flotte au-dessus de la navigation, un faux appui sur ARRIVÉE
+        // ne doit pas coûter la course.
+        terminerCourse({ tempsEcoule, revenu, debut })
+          .then(idHistorique =>
+            preparerAnnulation({
+              idHistorique,
+              tempsDebut: debut,
+              duree: tempsEcoule,
+              revenu,
+              date: getDateJour(),
+            }),
+          )
+          .catch(e => console.error('Erreur fin de course:', e));
         arriveeDestination();
         break;
       }
@@ -109,12 +125,23 @@ export const useWidgetOverlayBridge = (): void => {
     clientMonte,
     commencerService,
     demarrerCourse,
+    preparerAnnulation,
     reprendreService,
     terminerCourse,
   ]);
 
   const handleActionSecondaire = useCallback(() => {
-    const { sessionEtat: sEtat, courseEtat: cEtat } = stateRef.current;
+    const {
+      sessionEtat: sEtat,
+      courseEtat: cEtat,
+      annulationActive: annulable,
+    } = stateRef.current;
+
+    // Juste après une ARRIVÉE, le bouton secondaire sert à revenir en arrière.
+    if (annulable) {
+      annulerFinDeCourse();
+      return;
+    }
 
     if (sEtat !== 'EN_SERVICE') {
       return;
@@ -126,7 +153,7 @@ export const useWidgetOverlayBridge = (): void => {
     } else if (cEtat === 'PICKUP') {
       annulerCourse();
     }
-  }, [annulerCourse, mettreEnPause]);
+  }, [annulerCourse, annulerFinDeCourse, mettreEnPause]);
 
   // Écouteur des actions de l'overlay natif.
   useEffect(() => {
@@ -171,5 +198,6 @@ export const useWidgetOverlayBridge = (): void => {
     tempsPauseCumule,
     tarifPriseEnCharge,
     tarifParMinute,
+    annulationActive,
   ]);
 };

@@ -23,11 +23,14 @@ interface HistoryState {
   chargement: boolean;
 
   chargerHistorique: () => Promise<void>;
+  // Renvoie l'id de la ligne créée, pour pouvoir la retirer si l'utilisateur
+  // annule dans la foulée.
   enregistrerCourse: (c: {
     debut: number;
     duree: number;
     revenu: number;
-  }) => Promise<void>;
+  }) => Promise<string>;
+  supprimerCourse: (id: string) => Promise<void>;
   enregistrerSession: (s: {
     debut: number;
     fin: number;
@@ -85,6 +88,13 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     };
     const courses = purger([...get().courses, ligne]);
     set({ courses, logDepuis });
+    await sauvegarderCoursesHistorique(courses);
+    return ligne.id;
+  },
+
+  supprimerCourse: async (id: string) => {
+    const courses = get().courses.filter(c => c.id !== id);
+    set({ courses });
     await sauvegarderCoursesHistorique(courses);
   },
 
