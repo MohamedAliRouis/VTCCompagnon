@@ -33,7 +33,8 @@ const PERIODES: { cle: Periode; label: string }[] = [
   { cle: 'mois', label: 'Mois' },
 ];
 
-const LETTRES_JOUR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const LETTRES_JOUR_LUNDI = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const LETTRES_JOUR_DIMANCHE = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -42,6 +43,10 @@ export const HistoryScreen: React.FC = () => {
   const agregatsLegacy = useHistoryStore(s => s.agregatsLegacy);
   const logDepuis = useHistoryStore(s => s.logDepuis);
   const objectif = useSettingsStore(s => s.settings.objectifJournalier);
+  const debutSemaineReglage = useSettingsStore(s => s.settings.debutSemaine);
+  const premierJour: 0 | 1 = debutSemaineReglage === 'dimanche' ? 0 : 1;
+  const lettresJour =
+    premierJour === 0 ? LETTRES_JOUR_DIMANCHE : LETTRES_JOUR_LUNDI;
 
   const [periode, setPeriode] = useState<Periode>('jour');
   const [ancre, setAncre] = useState(getDateJour());
@@ -49,8 +54,8 @@ export const HistoryScreen: React.FC = () => {
 
   const aujourdhui = getDateJour();
   const { debut, fin } = useMemo(
-    () => bornesPeriode(periode, ancre),
-    [periode, ancre],
+    () => bornesPeriode(periode, ancre, premierJour),
+    [periode, ancre, premierJour],
   );
 
   const parJour = useMemo(
@@ -114,7 +119,9 @@ export const HistoryScreen: React.FC = () => {
 
       <View style={styles.nav}>
         <TouchableOpacity
-          onPress={() => setAncre(a => decalerPeriode(periode, a, -1))}
+          onPress={() =>
+            setAncre(a => decalerPeriode(periode, a, -1, premierJour))
+          }
           style={styles.navBtn}
         >
           <Text style={styles.navFleche}>◄</Text>
@@ -122,7 +129,9 @@ export const HistoryScreen: React.FC = () => {
         <Text style={styles.navLabel}>{libelle}</Text>
         <TouchableOpacity
           disabled={!peutAvancer}
-          onPress={() => setAncre(a => decalerPeriode(periode, a, 1))}
+          onPress={() =>
+            setAncre(a => decalerPeriode(periode, a, 1, premierJour))
+          }
           style={styles.navBtn}
         >
           <Text style={[styles.navFleche, !peutAvancer && styles.navFlecheOff]}>
@@ -181,6 +190,7 @@ export const HistoryScreen: React.FC = () => {
           jours={agregat.jours}
           periode={periode}
           objectif={objectif}
+          lettresJour={lettresJour}
         />
       )}
 
@@ -229,7 +239,8 @@ const GrapheBarres: React.FC<{
   jours: AgregatJour[];
   periode: Periode;
   objectif?: number;
-}> = ({ jours, periode, objectif }) => {
+  lettresJour: string[];
+}> = ({ jours, periode, objectif, lettresJour }) => {
   const max = Math.max(...jours.map(j => j.revenu), objectif ?? 0, 1);
 
   return (
@@ -258,7 +269,7 @@ const GrapheBarres: React.FC<{
               />
               <Text style={styles.grapheLabel} numberOfLines={1}>
                 {periode === 'semaine'
-                  ? LETTRES_JOUR[i]
+                  ? lettresJour[i]
                   : i % 5 === 0
                     ? String(i + 1)
                     : ''}

@@ -1,160 +1,228 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TextInput,
-  Switch,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSettingsStore } from '../store';
-import { COULEURS } from '../constants';
+import { useHistoryStore, useSettingsStore, useStatsStore } from '../store';
+import { COULEURS, RETENTION_JOURS, RETENTIONS_POSSIBLES } from '../constants';
+
+// --- petits composants ---
+
+const Carte: React.FC<{
+  titre: string;
+  hint?: string;
+  children: React.ReactNode;
+}> = ({ titre, hint, children }) => (
+  <View style={styles.carte}>
+    <Text style={styles.carteTitre}>{titre}</Text>
+    {hint ? <Text style={styles.carteHint}>{hint}</Text> : null}
+    {children}
+  </View>
+);
+
+const ChampNombre: React.FC<{
+  label: string;
+  valeurStockee: string;
+  onValider: (n: number | null) => void;
+  optionnel?: boolean;
+  placeholder?: string;
+}> = ({ label, valeurStockee, onValider, optionnel, placeholder }) => {
+  const [txt, setTxt] = useState(valeurStockee);
+
+  // Resync quand la valeur persistée change (chargement async, effacement…).
+  useEffect(() => setTxt(valeurStockee), [valeurStockee]);
+
+  const valider = () => {
+    const trim = txt.trim();
+    if (trim === '') {
+      if (optionnel) {
+        onValider(null);
+      } else {
+        setTxt(valeurStockee); // champ obligatoire : on remet la dernière valeur
+      }
+      return;
+    }
+    const n = parseFloat(trim.replace(',', '.'));
+    if (isNaN(n) || n < 0) {
+      setTxt(valeurStockee);
+      return;
+    }
+    onValider(n);
+  };
+
+  return (
+    <View style={styles.champ}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        style={styles.input}
+        value={txt}
+        onChangeText={setTxt}
+        onBlur={valider}
+        onSubmitEditing={valider}
+        keyboardType="decimal-pad"
+        placeholder={placeholder}
+        placeholderTextColor={COULEURS.texteFaible}
+      />
+    </View>
+  );
+};
+
+function Segmente<T extends string | number>({
+  options,
+  valeur,
+  onChange,
+}: {
+  options: { cle: T; label: string }[];
+  valeur: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <View style={styles.segment}>
+      {options.map(o => {
+        const actif = o.cle === valeur;
+        return (
+          <TouchableOpacity
+            key={String(o.cle)}
+            onPress={() => onChange(o.cle)}
+            style={[styles.segmentBtn, actif && styles.segmentBtnActif]}
+          >
+            <Text
+              style={[styles.segmentTxt, actif && styles.segmentTxtActif]}
+            >
+              {o.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+// --- écran ---
 
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { settings, setTarifs, setNotifications, setObjectifJournalier } =
-    useSettingsStore();
-  const [priseEnCharge, setPriseEnCharge] = React.useState(
-    settings.tarifs.priseEnCharge.toString()
-  );
-  const [parMinute, setParMinute] = React.useState(
-    settings.tarifs.parMinute.toString()
-  );
-  const [objectif, setObjectif] = React.useState(
-    settings.objectifJournalier?.toString() ?? ''
-  );
+  const settings = useSettingsStore(s => s.settings);
+  const setTarifs = useSettingsStore(s => s.setTarifs);
+  const setObjectifJournalier = useSettingsStore(s => s.setObjectifJournalier);
+  const setRetentionJours = useSettingsStore(s => s.setRetentionJours);
+  const setDebutSemaine = useSettingsStore(s => s.setDebutSemaine);
+  const effacerHistorique = useHistoryStore(s => s.effacer);
+  const resetJour = useStatsStore(s => s.resetJour);
 
-  // Les settings se chargent en asynchrone : resynchroniser les champs quand
-  // les vraies valeurs sauvegardées arrivent (sinon ils restent sur les
-  // valeurs par défaut affichées au premier render).
-  React.useEffect(() => {
-    setPriseEnCharge(settings.tarifs.priseEnCharge.toString());
-    setParMinute(settings.tarifs.parMinute.toString());
-    setObjectif(settings.objectifJournalier?.toString() ?? '');
-  }, [
-    settings.tarifs.priseEnCharge,
-    settings.tarifs.parMinute,
-    settings.objectifJournalier,
-  ]);
+  const retention = settings.retentionJours ?? RETENTION_JOURS;
 
-  const sauvegarderTarifs = () => {
-    const pec = parseFloat(priseEnCharge.replace(',', '.'));
-    const min = parseFloat(parMinute.replace(',', '.'));
-
-    if (isNaN(pec) || isNaN(min) || pec < 0 || min < 0) {
-      Alert.alert('Erreur', 'Veuillez entrer des valeurs valides');
-      return;
-    }
-
-    setTarifs({
-      ...settings.tarifs,
-      priseEnCharge: pec,
-      parMinute: min,
-    });
-
-    Alert.alert('Succès', 'Tarifs mis à jour');
-  };
-
-  const sauvegarderObjectif = () => {
-    const trim = objectif.trim();
-    if (trim === '') {
-      setObjectifJournalier(null);
-      return;
-    }
-    const val = parseFloat(trim.replace(',', '.'));
-    if (isNaN(val) || val < 0) {
-      Alert.alert('Erreur', 'Objectif invalide');
-      return;
-    }
-    setObjectifJournalier(val);
+  const confirmerEffacement = () => {
+    Alert.alert(
+      'Effacer les données ?',
+      "Supprime tout l'historique des courses et des sessions ainsi que les " +
+        'statistiques du jour. Les tarifs et réglages sont conservés. ' +
+        'Action irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Effacer',
+          style: 'destructive',
+          onPress: () => {
+            effacerHistorique();
+            resetJour();
+          },
+        },
+      ],
+    );
   };
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingTop: insets.top }}
+      contentContainerStyle={[styles.contenu, { paddingTop: insets.top }]}
     >
       <Text style={styles.titre}>⚙️ Paramètres</Text>
 
-      {/* Tarifs */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>Tarifs estimés</Text>
+      <Carte
+        titre="Tarification"
+        hint="Sert à estimer le revenu d'une course. Enregistré automatiquement."
+      >
+        <ChampNombre
+          label="Prise en charge (€)"
+          valeurStockee={settings.tarifs.priseEnCharge.toString()}
+          onValider={n =>
+            n !== null &&
+            setTarifs({ ...settings.tarifs, priseEnCharge: n })
+          }
+          placeholder="2.50"
+        />
+        <ChampNombre
+          label="Prix par minute (€)"
+          valeurStockee={settings.tarifs.parMinute.toString()}
+          onValider={n =>
+            n !== null && setTarifs({ ...settings.tarifs, parMinute: n })
+          }
+          placeholder="0.35"
+        />
+      </Carte>
 
-        <View style={styles.champ}>
-          <Text style={styles.label}>Prise en charge (€)</Text>
-          <TextInput
-            style={styles.input}
-            value={priseEnCharge}
-            onChangeText={setPriseEnCharge}
-            keyboardType="decimal-pad"
-            placeholder="2.50"
-            placeholderTextColor={COULEURS.texteFaible}
-          />
-        </View>
+      <Carte
+        titre="Objectif"
+        hint="Revenu visé par jour. Affiché sur l'accueil et l'historique. Laisser vide pour désactiver."
+      >
+        <ChampNombre
+          label="Objectif journalier (€)"
+          valeurStockee={settings.objectifJournalier?.toString() ?? ''}
+          onValider={setObjectifJournalier}
+          optionnel
+          placeholder="ex. 150"
+        />
+      </Carte>
 
-        <View style={styles.champ}>
-          <Text style={styles.label}>Par minute (€)</Text>
-          <TextInput
-            style={styles.input}
-            value={parMinute}
-            onChangeText={setParMinute}
-            keyboardType="decimal-pad"
-            placeholder="0.35"
-            placeholderTextColor={COULEURS.texteFaible}
-          />
-        </View>
+      <Carte titre="Affichage">
+        <Text style={styles.label}>Début de semaine</Text>
+        <Segmente
+          options={[
+            { cle: 'lundi', label: 'Lundi' },
+            { cle: 'dimanche', label: 'Dimanche' },
+          ]}
+          valeur={settings.debutSemaine ?? 'lundi'}
+          onChange={setDebutSemaine}
+        />
+      </Carte>
 
-        <TouchableOpacity style={styles.bouton} onPress={sauvegarderTarifs}>
-          <Text style={styles.texteBouton}>Sauvegarder les tarifs</Text>
-        </TouchableOpacity>
-      </View>
+      <Carte
+        titre="Données"
+        hint="Le journal détaillé au-delà de cette durée est supprimé."
+      >
+        <Text style={styles.label}>Rétention de l'historique</Text>
+        <Segmente
+          options={RETENTIONS_POSSIBLES.map(j => ({
+            cle: j,
+            label: j >= 365 ? '1 an' : `${j} j`,
+          }))}
+          valeur={retention}
+          onChange={setRetentionJours}
+        />
 
-      {/* Objectif */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>Objectif journalier</Text>
-        <View style={styles.champ}>
-          <Text style={styles.label}>Revenu cible par jour (€) — optionnel</Text>
-          <TextInput
-            style={styles.input}
-            value={objectif}
-            onChangeText={setObjectif}
-            onBlur={sauvegarderObjectif}
-            onSubmitEditing={sauvegarderObjectif}
-            keyboardType="decimal-pad"
-            placeholder="ex. 150"
-            placeholderTextColor={COULEURS.texteFaible}
-          />
-        </View>
-      </View>
-
-      {/* Préférences */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>Préférences</Text>
-
-        <View style={styles.option}>
-          <Text style={styles.labelOption}>Notifications</Text>
-          <Switch
-            value={settings.notifications}
-            onValueChange={setNotifications}
-            trackColor={{ false: COULEURS.separateur, true: COULEURS.accent }}
-            thumbColor={COULEURS.texte}
-          />
-        </View>
-      </View>
-
-      {/* À propos */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>À propos</Text>
-        <View style={styles.carte}>
-          <Text style={styles.texteAPropos}>
-            VTC Compagnon v0.1.0{'\n'}
-            Assistant personnel pour chauffeurs VTC
+        <TouchableOpacity
+          style={styles.boutonDanger}
+          onPress={confirmerEffacement}
+        >
+          <Text style={styles.boutonDangerTxt}>
+            Effacer l'historique et les statistiques
           </Text>
-        </View>
-      </View>
+        </TouchableOpacity>
+      </Carte>
+
+      <Carte titre="À propos">
+        <Text style={styles.aPropos}>
+          VTC Compagnon v0.1.0{'\n'}
+          Assistant personnel pour chauffeurs VTC
+        </Text>
+      </Carte>
     </ScrollView>
   );
 };
@@ -165,73 +233,99 @@ const styles = StyleSheet.create({
     backgroundColor: COULEURS.fond,
     padding: 16,
   },
+  contenu: {
+    paddingBottom: 32,
+  },
   titre: {
     fontSize: 24,
     fontWeight: 'bold',
     color: COULEURS.texte,
-    marginBottom: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitre: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COULEURS.accentClair,
-    marginBottom: 12,
-  },
-  champ: {
     marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    color: COULEURS.texteSecondaire,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: COULEURS.carte,
-    borderWidth: 1,
-    borderColor: COULEURS.carteBordure,
-    borderRadius: 8,
-    padding: 12,
-    color: COULEURS.texte,
-    fontSize: 16,
-  },
-  bouton: {
-    backgroundColor: COULEURS.accent,
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  texteBouton: {
-    color: COULEURS.surAccent,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  option: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COULEURS.separateur,
-  },
-  labelOption: {
-    fontSize: 14,
-    color: COULEURS.texte,
   },
   carte: {
     backgroundColor: COULEURS.carte,
     borderWidth: 1,
     borderColor: COULEURS.carteBordure,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
+    marginBottom: 14,
   },
-  texteAPropos: {
+  carteTitre: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: COULEURS.accentClair,
+    textTransform: 'uppercase',
+  },
+  carteHint: {
+    fontSize: 12,
+    color: COULEURS.texteFaible,
+    marginTop: 6,
+    lineHeight: 17,
+  },
+  champ: {
+    marginTop: 14,
+  },
+  label: {
+    fontSize: 13,
+    color: COULEURS.texteSecondaire,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: COULEURS.fond,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    color: COULEURS.texte,
+    fontSize: 16,
+  },
+  segment: {
+    flexDirection: 'row',
+    backgroundColor: COULEURS.fond,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 7,
+    alignItems: 'center',
+  },
+  segmentBtnActif: {
+    backgroundColor: COULEURS.accent,
+  },
+  segmentTxt: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COULEURS.texteSecondaire,
+  },
+  segmentTxtActif: {
+    color: COULEURS.surAccent,
+  },
+  boutonDanger: {
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: COULEURS.danger,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  boutonDangerTxt: {
+    color: COULEURS.danger,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  aPropos: {
     fontSize: 14,
     color: COULEURS.texteSecondaire,
     textAlign: 'center',
     lineHeight: 22,
+    marginTop: 12,
   },
 });

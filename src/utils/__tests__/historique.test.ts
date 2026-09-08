@@ -33,6 +33,21 @@ describe('arithmétique de dates', () => {
     expect(debutSemaine('2026-09-13')).toBe('2026-09-07');
   });
 
+  it('debutSemaine avec semaine commençant le dimanche', () => {
+    // mardi 08 -> dimanche 06
+    expect(debutSemaine('2026-09-08', 0)).toBe('2026-09-06');
+    // un dimanche reste inchangé
+    expect(debutSemaine('2026-09-13', 0)).toBe('2026-09-13');
+  });
+
+  it('bornesPeriode / decalerPeriode respectent le début de semaine', () => {
+    expect(bornesPeriode('semaine', '2026-09-08', 0)).toEqual({
+      debut: '2026-09-06',
+      fin: '2026-09-12',
+    });
+    expect(decalerPeriode('semaine', '2026-09-08', -1, 0)).toBe('2026-08-30');
+  });
+
   it('debutMois / finMois', () => {
     expect(debutMois('2026-09-08')).toBe('2026-09-01');
     expect(finMois('2026-09-08')).toBe('2026-09-30');
