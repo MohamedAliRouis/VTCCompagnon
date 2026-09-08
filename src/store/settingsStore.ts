@@ -1,57 +1,55 @@
 import { create } from 'zustand';
-import { Settings, Tarifs } from '../types';
+import { Settings, Tarifs, DebutSemaine } from '../types';
 import { TARIFS_DEFAUT } from '../constants';
 import { chargerSettings, sauvegarderSettings } from '../utils/storage';
 
 interface SettingsState {
   settings: Settings;
   chargement: boolean;
-  
-  // Actions
+
   chargerSettings: () => Promise<void>;
   setTarifs: (tarifs: Tarifs) => Promise<void>;
-  setNotifications: (actives: boolean) => Promise<void>;
   setObjectifJournalier: (objectif: number | null) => Promise<void>;
+  setRetentionJours: (jours: number) => Promise<void>;
+  setDebutSemaine: (debut: DebutSemaine) => Promise<void>;
 }
 
 const settingsInitiaux: Settings = {
   tarifs: TARIFS_DEFAUT,
-  notifications: true,
 };
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
-  settings: settingsInitiaux,
-  chargement: true,
+export const useSettingsStore = create<SettingsState>((set, get) => {
+  const patch = async (partiel: Partial<Settings>) => {
+    const nouveaux = { ...get().settings, ...partiel };
+    set({ settings: nouveaux });
+    await sauvegarderSettings(nouveaux);
+  };
 
-  chargerSettings: async () => {
-    set({ chargement: true });
-    const settings = await chargerSettings();
-    set({ settings, chargement: false });
-  },
+  return {
+    settings: settingsInitiaux,
+    chargement: true,
 
-  setTarifs: async (tarifs: Tarifs) => {
-    const { settings } = get();
-    const nouveauxSettings = { ...settings, tarifs };
-    set({ settings: nouveauxSettings });
-    await sauvegarderSettings(nouveauxSettings);
-  },
+    chargerSettings: async () => {
+      set({ chargement: true });
+      const settings = await chargerSettings();
+      set({ settings, chargement: false });
+    },
 
-  setNotifications: async (actives: boolean) => {
-    const { settings } = get();
-    const nouveauxSettings = { ...settings, notifications: actives };
-    set({ settings: nouveauxSettings });
-    await sauvegarderSettings(nouveauxSettings);
-  },
+    setTarifs: tarifs => patch({ tarifs }),
 
-  setObjectifJournalier: async (objectif: number | null) => {
-    const { settings } = get();
-    const nouveauxSettings: Settings = { ...settings };
-    if (objectif && objectif > 0) {
-      nouveauxSettings.objectifJournalier = objectif;
-    } else {
-      delete nouveauxSettings.objectifJournalier;
-    }
-    set({ settings: nouveauxSettings });
-    await sauvegarderSettings(nouveauxSettings);
-  },
-}));
+    setObjectifJournalier: async objectif => {
+      const nouveaux: Settings = { ...get().settings };
+      if (objectif && objectif > 0) {
+        nouveaux.objectifJournalier = objectif;
+      } else {
+        delete nouveaux.objectifJournalier;
+      }
+      set({ settings: nouveaux });
+      await sauvegarderSettings(nouveaux);
+    },
+
+    setRetentionJours: jours => patch({ retentionJours: jours }),
+
+    setDebutSemaine: debut => patch({ debutSemaine: debut }),
+  };
+});

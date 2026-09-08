@@ -34,6 +34,15 @@ export const sauvegarder = async <T>(cle: string, valeur: T): Promise<boolean> =
   }
 };
 
+// Supprimer une clé
+export const supprimer = async (cle: string): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(cle);
+  } catch (error) {
+    console.error(`Erreur suppression ${cle}:`, error);
+  }
+};
+
 // Charger les stats du jour (avec reset si nouveau jour)
 export const chargerStatsJour = async (): Promise<StatsJour> => {
   const dateJour = getDateJour();
@@ -128,10 +137,7 @@ export const sauvegarderSessionTravail = async (
 // Charger les settings
 export const chargerSettings = async (): Promise<Settings> => {
   const settings = await charger<Settings>(CLES_STOCKAGE.SETTINGS);
-  return settings || {
-    tarifs: TARIFS_DEFAUT,
-    notifications: true,
-  };
+  return settings || { tarifs: TARIFS_DEFAUT };
 };
 
 // Sauvegarder les settings

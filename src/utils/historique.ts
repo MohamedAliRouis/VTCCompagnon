@@ -66,10 +66,11 @@ export const ajouterJours = (ymd: string, n: number): string => {
   return toYmd(d);
 };
 
-// Lundi de la semaine contenant ymd.
-export const debutSemaine = (ymd: string): string => {
+// Début (par défaut lundi) de la semaine contenant ymd.
+// premierJour : 1 = lundi (défaut), 0 = dimanche.
+export const debutSemaine = (ymd: string, premierJour: 0 | 1 = 1): string => {
   const d = parseYmd(ymd);
-  const decalage = (d.getDay() + 6) % 7; // dim=0 -> 6, lun=1 -> 0
+  const decalage = (d.getDay() - premierJour + 7) % 7;
   d.setDate(d.getDate() - decalage);
   return toYmd(d);
 };
@@ -87,12 +88,13 @@ export const finMois = (ymd: string): string => {
 export const bornesPeriode = (
   periode: Periode,
   ancre: string,
+  premierJour: 0 | 1 = 1,
 ): { debut: string; fin: string } => {
   if (periode === 'jour') {
     return { debut: ancre, fin: ancre };
   }
   if (periode === 'semaine') {
-    const debut = debutSemaine(ancre);
+    const debut = debutSemaine(ancre, premierJour);
     return { debut, fin: ajouterJours(debut, 6) };
   }
   return { debut: debutMois(ancre), fin: finMois(ancre) };
@@ -103,12 +105,13 @@ export const decalerPeriode = (
   periode: Periode,
   ancre: string,
   sens: -1 | 1,
+  premierJour: 0 | 1 = 1,
 ): string => {
   if (periode === 'jour') {
     return ajouterJours(ancre, sens);
   }
   if (periode === 'semaine') {
-    return ajouterJours(debutSemaine(ancre), sens * 7);
+    return ajouterJours(debutSemaine(ancre, premierJour), sens * 7);
   }
   const d = parseYmd(debutMois(ancre));
   return toYmd(new Date(d.getFullYear(), d.getMonth() + sens, 1, 12));

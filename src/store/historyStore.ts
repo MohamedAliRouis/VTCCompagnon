@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { CourseHistorique, SessionHistorique, HistoriqueJour } from '../types';
-import { RETENTION_JOURS } from '../constants';
+import { CLES_STOCKAGE, RETENTION_JOURS } from '../constants';
 import {
   chargerCoursesHistorique,
   sauvegarderCoursesHistorique,
@@ -9,9 +9,11 @@ import {
   chargerHistorique,
   chargerLogDepuis,
   sauvegarderLogDepuis,
+  supprimer,
 } from '../utils/storage';
 import { getDateJour, genererId } from '../utils/formatters';
 import { ajouterJours } from '../utils/historique';
+import { useSettingsStore } from './settingsStore';
 
 interface HistoryState {
   courses: CourseHistorique[];
@@ -32,11 +34,14 @@ interface HistoryState {
     tempsService: number;
     tempsPause: number;
   }) => Promise<void>;
+  effacer: () => Promise<void>;
 }
 
-// Ne garde que les lignes des RETENTION_JOURS derniers jours.
+// Ne garde que les lignes dans la fenêtre de rétention configurée.
 const purger = <T extends { date: string }>(rows: T[]): T[] => {
-  const limite = ajouterJours(getDateJour(), -RETENTION_JOURS);
+  const jours =
+    useSettingsStore.getState().settings.retentionJours ?? RETENTION_JOURS;
+  const limite = ajouterJours(getDateJour(), -jours);
   return rows.filter(r => r.date >= limite);
 };
 
@@ -96,5 +101,18 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const sessions = purger([...get().sessions, ligne]);
     set({ sessions, logDepuis });
     await sauvegarderSessionsHistorique(sessions);
+  },
+
+  // Vide tout le journal (courses, sessions, legacy). Les réglages sont conservés.
+  // logDepuis repart d'aujourd'hui pour que la fusion legacy reste cohérente.
+  effacer: async () => {
+    const logDepuis = getDateJour();
+    set({ courses: [], sessions: [], agregatsLegacy: [], logDepuis });
+    await Promise.all([
+      sauvegarderCoursesHistorique([]),
+      sauvegarderSessionsHistorique([]),
+      supprimer(CLES_STOCKAGE.HISTORIQUE),
+      sauvegarderLogDepuis(logDepuis),
+    ]);
   },
 }));

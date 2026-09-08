@@ -1,7 +1,9 @@
 /**
- * Journal des courses / sessions : ajout, persistance, rétention 90 jours.
+ * Journal des courses / sessions : ajout, persistance, rétention, effacement.
  */
 import { useHistoryStore } from '../historyStore';
+import { useSettingsStore } from '../settingsStore';
+import { TARIFS_DEFAUT } from '../../constants';
 
 jest.mock('../../utils/storage', () => ({
   chargerCoursesHistorique: jest.fn(),
@@ -11,6 +13,9 @@ jest.mock('../../utils/storage', () => ({
   chargerHistorique: jest.fn(),
   chargerLogDepuis: jest.fn(),
   sauvegarderLogDepuis: jest.fn(),
+  supprimer: jest.fn(),
+  chargerSettings: jest.fn(),
+  sauvegarderSettings: jest.fn(),
 }));
 
 const storage = require('../../utils/storage');
@@ -27,6 +32,7 @@ beforeEach(() => {
   storage.chargerHistorique.mockReset().mockResolvedValue([]);
   storage.chargerLogDepuis.mockReset().mockResolvedValue('2026-09-08');
   storage.sauvegarderLogDepuis.mockReset().mockResolvedValue(undefined);
+  storage.supprimer.mockReset().mockResolvedValue(undefined);
 
   useHistoryStore.setState({
     courses: [],
@@ -35,6 +41,7 @@ beforeEach(() => {
     logDepuis: '2026-09-08',
     chargement: false,
   });
+  useSettingsStore.setState({ settings: { tarifs: TARIFS_DEFAUT } });
 });
 
 afterEach(() => jest.useRealTimers());
@@ -82,20 +89,61 @@ describe('enregistrerCourse', () => {
     expect(storage.sauvegarderCoursesHistorique).toHaveBeenCalledWith(c);
   });
 
-  it('purge les courses de plus de 90 jours', async () => {
+  it('purge selon la rétention configurée', async () => {
+    // Jour courant : 2026-09-08. -90 j ≈ 2026-06-10 ; -30 j = 2026-08-09.
     useHistoryStore.setState({
       courses: [
         { id: 'vieux', date: '2026-05-01', debut: 0, duree: 1, revenu: 1 },
+        { id: 'moyen', date: '2026-07-15', debut: 0, duree: 1, revenu: 1 },
         { id: 'recent', date: '2026-09-01', debut: 0, duree: 1, revenu: 1 },
       ],
     });
 
+    // Défaut 90 j : 2026-05-01 sort, le reste tient.
     await store().enregistrerCourse({ debut: 0, duree: 60, revenu: 5 });
+    let dates = store().courses.map(c => c.date);
+    expect(dates).not.toContain('2026-05-01');
+    expect(dates).toContain('2026-07-15');
 
-    const dates = store().courses.map(c => c.date);
-    expect(dates).not.toContain('2026-05-01'); // > 90 j -> purgé
+    // Rétention 30 j : 2026-07-15 sort à son tour.
+    useSettingsStore.setState({
+      settings: { tarifs: TARIFS_DEFAUT, retentionJours: 30 },
+    });
+    await store().enregistrerCourse({ debut: 0, duree: 60, revenu: 5 });
+    dates = store().courses.map(c => c.date);
+    expect(dates).not.toContain('2026-07-15');
     expect(dates).toContain('2026-09-01');
-    expect(dates).toContain('2026-09-08');
+  });
+});
+
+describe('effacer', () => {
+  it('vide tout le journal et réinitialise logDepuis', async () => {
+    useHistoryStore.setState({
+      courses: [{ id: 'c', date: '2026-09-08', debut: 0, duree: 1, revenu: 1 }],
+      sessions: [
+        {
+          id: 's',
+          date: '2026-09-08',
+          debut: 0,
+          fin: 1,
+          tempsService: 1,
+          tempsPause: 0,
+        },
+      ],
+      agregatsLegacy: [
+        { date: '2026-09-01', nbCourses: 1, tempsTotal: 1, revenuTotal: 1 },
+      ],
+      logDepuis: '2026-06-01',
+    });
+
+    await store().effacer();
+
+    expect(store().courses).toEqual([]);
+    expect(store().sessions).toEqual([]);
+    expect(store().agregatsLegacy).toEqual([]);
+    expect(store().logDepuis).toBe('2026-09-08');
+    expect(storage.sauvegarderCoursesHistorique).toHaveBeenCalledWith([]);
+    expect(storage.supprimer).toHaveBeenCalledWith('@vtc_historique');
   });
 });
 

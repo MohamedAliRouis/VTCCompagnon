@@ -58,11 +58,13 @@ export interface SessionHistorique {
 export interface Tarifs {
   priseEnCharge: number;
   parMinute: number;
-  parKm: number;
 }
+
+export type DebutSemaine = 'lundi' | 'dimanche';
 
 export interface Settings {
   tarifs: Tarifs;
-  notifications: boolean;
   objectifJournalier?: number; // revenu cible du jour, en €
+  retentionJours?: number; // jours de journal conservés (défaut RETENTION_JOURS)
+  debutSemaine?: DebutSemaine; // défaut 'lundi'
 }

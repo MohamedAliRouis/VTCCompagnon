@@ -15,14 +15,14 @@ export const CLES_STOCKAGE = {
   SESSION_TRAVAIL: '@vtc_session_travail',
 } as const;
 
-// Nombre de jours de journal conservés (courses + sessions).
+// Rétention par défaut du journal (courses + sessions), en jours.
 export const RETENTION_JOURS = 90;
+export const RETENTIONS_POSSIBLES = [30, 90, 365] as const;
 
 // Tarifs par défaut (modifiables dans Settings)
 export const TARIFS_DEFAUT: Tarifs = {
   priseEnCharge: 2.50,
   parMinute: 0.35,
-  parKm: 1.20,
 };
 
 // Couleurs par état de course
