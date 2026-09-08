@@ -2,16 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   AppState,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatsModal } from '../components/Stats';
 import {
   useCourseStore,
   useSessionStore,
@@ -19,7 +17,7 @@ import {
   useStatsStore,
 } from '../store';
 import { useOverlayControls } from '../hooks';
-import { COULEURS_ETAT, TEXTES_ETAT } from '../constants';
+import { COULEURS, COULEURS_ETAT, TEXTES_ETAT } from '../constants';
 import { formaterArgent, formaterTemps } from '../utils/formatters';
 
 const DESCRIPTIONS_ETAT = {
@@ -34,8 +32,13 @@ const TEXTES_SESSION = {
   EN_PAUSE: 'EN PAUSE',
 } as const;
 
-// Sous-composants isolés pour que le tick chrono (chaque seconde) ne re-render
-// que ce bloc, pas toute la page.
+// Fonds teintés des badges d'état de session (spécifiques à cet écran).
+const BADGE_ACTIF = '#194b39';
+const BADGE_PAUSE = '#5b431a';
+const BADGE_INACTIF = '#303749';
+
+// Sous-composants isolés : le tick chrono (chaque seconde) ne re-render que ce
+// bloc, pas toute la page.
 const MetriquesSession = React.memo<{ enPause: boolean }>(({ enPause }) => {
   const tempsServiceEcoule = useSessionStore(s => s.session.tempsServiceEcoule);
   const tempsPauseEcoule = useSessionStore(s => s.session.tempsPauseEcoule);
@@ -86,14 +89,12 @@ const MetriquesCourse = React.memo(() => {
 MetriquesCourse.displayName = 'MetriquesCourse';
 
 export const HomeScreen: React.FC = () => {
-  const [modalStatsVisible, setModalStatsVisible] = useState(false);
+  const navigation = useNavigation<{ navigate: (n: string) => void }>();
   const [overlayActif, setOverlayActif] = useState(false);
   const [actionOverlayEnCours, setActionOverlayEnCours] = useState(false);
   const [attentePermission, setAttentePermission] = useState(false);
 
   // Sélecteurs fins : l'écran ne se re-render que sur une transition d'état.
-  // Les valeurs qui défilent (temps, revenu) vivent dans des sous-composants
-  // mémoïsés plus bas.
   const courseEtat = useCourseStore(state => state.course.etat);
   const sessionEtat = useSessionStore(state => state.session.etat);
   const statsJour = useStatsStore(state => state.statsJour);
@@ -148,7 +149,10 @@ export const HomeScreen: React.FC = () => {
 
   const activerOverlay = async () => {
     if (!isSupported) {
-      Alert.alert('Non supporté', 'Le widget flottant est disponible uniquement sur Android.');
+      Alert.alert(
+        'Non supporté',
+        'Le widget flottant est disponible uniquement sur Android.',
+      );
       return;
     }
 
@@ -223,7 +227,11 @@ export const HomeScreen: React.FC = () => {
     const { session } = useSessionStore.getState();
     Alert.alert(
       'Terminer le service ?',
-      `Temps travaillé : ${formaterTemps(session.tempsServiceEcoule)}\nPauses : ${formaterTemps(session.tempsPauseCumule + session.tempsPauseEcoule)}`,
+      `Temps travaillé : ${formaterTemps(
+        session.tempsServiceEcoule,
+      )}\nPauses : ${formaterTemps(
+        session.tempsPauseCumule + session.tempsPauseEcoule,
+      )}`,
       [
         { text: 'Annuler', style: 'cancel' },
         { text: 'Terminer', style: 'destructive', onPress: terminerService },
@@ -231,12 +239,15 @@ export const HomeScreen: React.FC = () => {
     );
   };
 
+  const progression = objectifJournalier
+    ? Math.min(100, (statsJour.revenuTotal / objectifJournalier) * 100)
+    : 0;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.surtitre}>VTC COMPAGNON</Text>
         <Text style={styles.titre}>Tableau de bord</Text>
-        <Text style={styles.sousTitre}>Votre activité en un coup d’œil</Text>
 
         <View style={styles.sessionCard}>
           <View style={styles.cardHeader}>
@@ -244,28 +255,36 @@ export const HomeScreen: React.FC = () => {
             <View
               style={[
                 styles.sessionBadge,
-                sessionEtat === 'EN_PAUSE'
-                  ? styles.sessionBadgePause
-                  : sessionEtat === 'EN_SERVICE'
-                    ? styles.sessionBadgeActive
-                    : styles.sessionBadgeInactive,
+                {
+                  backgroundColor:
+                    sessionEtat === 'EN_PAUSE'
+                      ? BADGE_PAUSE
+                      : sessionEtat === 'EN_SERVICE'
+                        ? BADGE_ACTIF
+                        : BADGE_INACTIF,
+                },
               ]}
             >
-              <Text style={styles.sessionBadgeText}>{TEXTES_SESSION[sessionEtat]}</Text>
+              <Text style={styles.sessionBadgeText}>
+                {TEXTES_SESSION[sessionEtat]}
+              </Text>
             </View>
           </View>
 
           {sessionEtat === 'HORS_SERVICE' ? (
             <>
               <Text style={styles.sessionMessage}>
-                Démarrez votre session pour suivre votre temps de travail et vos pauses.
+                Démarrez votre session pour suivre votre temps de travail et vos
+                pauses.
               </Text>
               <TouchableOpacity
                 accessibilityRole="button"
                 onPress={commencerService}
                 style={styles.sessionPrimaryButton}
               >
-                <Text style={styles.sessionPrimaryButtonText}>Commencer mon service</Text>
+                <Text style={styles.sessionPrimaryButtonText}>
+                  Commencer mon service
+                </Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -274,11 +293,15 @@ export const HomeScreen: React.FC = () => {
 
               <TouchableOpacity
                 accessibilityRole="button"
-                onPress={sessionEtat === 'EN_PAUSE' ? reprendreService : demanderPause}
+                onPress={
+                  sessionEtat === 'EN_PAUSE' ? reprendreService : demanderPause
+                }
                 style={styles.sessionPrimaryButton}
               >
                 <Text style={styles.sessionPrimaryButtonText}>
-                  {sessionEtat === 'EN_PAUSE' ? 'Reprendre mon service' : 'Faire une pause'}
+                  {sessionEtat === 'EN_PAUSE'
+                    ? 'Reprendre mon service'
+                    : 'Faire une pause'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -286,7 +309,9 @@ export const HomeScreen: React.FC = () => {
                 onPress={demanderFinService}
                 style={styles.endSessionButton}
               >
-                <Text style={styles.endSessionButtonText}>Terminer mon service</Text>
+                <Text style={styles.endSessionButtonText}>
+                  Terminer mon service
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -315,8 +340,8 @@ export const HomeScreen: React.FC = () => {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitre}>Aujourd’hui</Text>
-          <TouchableOpacity onPress={() => setModalStatsVisible(true)}>
-            <Text style={styles.detailLink}>Voir le détail</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Historique')}>
+            <Text style={styles.detailLink}>Voir l’historique</Text>
           </TouchableOpacity>
         </View>
 
@@ -326,11 +351,15 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.statLabel}>Courses</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{formaterTemps(statsJour.tempsTotal)}</Text>
-            <Text style={styles.statLabel}>Temps</Text>
+            <Text style={styles.statValue}>
+              {formaterTemps(statsJour.tempsTotal)}
+            </Text>
+            <Text style={styles.statLabel}>Conduite</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statRevenue}>{formaterArgent(statsJour.revenuTotal)}</Text>
+            <Text style={styles.statRevenue}>
+              {formaterArgent(statsJour.revenuTotal)}
+            </Text>
             <Text style={styles.statLabel}>Revenus</Text>
           </View>
         </View>
@@ -345,17 +374,7 @@ export const HomeScreen: React.FC = () => {
               </Text>
             </View>
             <View style={styles.objectifRail}>
-              <View
-                style={[
-                  styles.objectifJauge,
-                  {
-                    width: `${Math.min(
-                      100,
-                      (statsJour.revenuTotal / objectifJournalier) * 100,
-                    )}%`,
-                  },
-                ]}
-              />
+              <View style={[styles.objectifJauge, { width: `${progression}%` }]} />
             </View>
           </View>
         ) : null}
@@ -384,12 +403,18 @@ export const HomeScreen: React.FC = () => {
             onPress={overlayActif ? desactiverOverlay : activerOverlay}
             style={[
               styles.overlayButton,
-              overlayActif ? styles.overlayButtonSecondary : styles.overlayButtonPrimary,
+              overlayActif
+                ? styles.overlayButtonSecondary
+                : styles.overlayButtonPrimary,
               actionOverlayEnCours && styles.buttonDisabled,
             ]}
           >
             <Text
-              style={overlayActif ? styles.overlayButtonSecondaryText : styles.overlayButtonPrimaryText}
+              style={
+                overlayActif
+                  ? styles.overlayButtonSecondaryText
+                  : styles.overlayButtonPrimaryText
+              }
             >
               {actionOverlayEnCours
                 ? 'Patientez…'
@@ -400,15 +425,6 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        transparent
-        visible={modalStatsVisible}
-        onRequestClose={() => setModalStatsVisible(false)}
-      >
-        <StatsModal onClose={() => setModalStatsVisible(false)} />
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -416,7 +432,7 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#10131f',
+    backgroundColor: COULEURS.fond,
   },
   content: {
     paddingHorizontal: 20,
@@ -424,34 +440,29 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   surtitre: {
-    color: '#5fa8ff',
+    color: COULEURS.accentClair,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.8,
   },
   titre: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 30,
     fontWeight: '800',
     marginTop: 6,
-  },
-  sousTitre: {
-    color: '#8f96aa',
-    fontSize: 14,
-    marginTop: 4,
-    marginBottom: 24,
+    marginBottom: 22,
   },
   courseCard: {
-    backgroundColor: '#1a1f30',
-    borderColor: '#293148',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 18,
     borderWidth: 1,
     padding: 18,
     marginTop: 14,
   },
   sessionCard: {
-    backgroundColor: '#1a1f30',
-    borderColor: '#3b4967',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.carteBordureAccent,
     borderRadius: 18,
     borderWidth: 1,
     padding: 18,
@@ -461,28 +472,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  sessionBadgeActive: {
-    backgroundColor: '#194b39',
-  },
-  sessionBadgePause: {
-    backgroundColor: '#5b431a',
-  },
-  sessionBadgeInactive: {
-    backgroundColor: '#303749',
-  },
   sessionBadgeText: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 11,
     fontWeight: '800',
   },
   sessionMessage: {
-    color: '#a8afc0',
+    color: COULEURS.texteSecondaire,
     fontSize: 14,
     lineHeight: 21,
     marginTop: 20,
   },
   sessionMetrics: {
-    borderTopColor: '#2a3145',
+    borderTopColor: COULEURS.separateur,
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 12,
@@ -490,27 +492,27 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   sessionTimeValue: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 24,
     fontWeight: '800',
     marginTop: 3,
   },
   pauseTimeValue: {
-    color: '#f2bd62',
+    color: COULEURS.alerte,
     fontSize: 24,
     fontWeight: '800',
     marginTop: 3,
   },
   sessionPrimaryButton: {
     alignItems: 'center',
-    backgroundColor: '#4f9df8',
+    backgroundColor: COULEURS.accent,
     borderRadius: 12,
     justifyContent: 'center',
     marginTop: 18,
     minHeight: 56,
   },
   sessionPrimaryButtonText: {
-    color: '#07101f',
+    color: COULEURS.surAccent,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -520,7 +522,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   endSessionButtonText: {
-    color: '#d67b82',
+    color: COULEURS.danger,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -530,14 +532,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardLabel: {
-    color: '#7f879b',
+    color: COULEURS.texteFaible,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.2,
   },
   etatContainer: {
     alignItems: 'center',
-    backgroundColor: '#111522',
+    backgroundColor: COULEURS.fond,
     borderRadius: 20,
     flexDirection: 'row',
     paddingHorizontal: 10,
@@ -550,18 +552,18 @@ const styles = StyleSheet.create({
     width: 10,
   },
   etatTexte: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 11,
     fontWeight: '800',
   },
   etatDescription: {
-    color: '#dce1ee',
+    color: COULEURS.texte,
     fontSize: 18,
     fontWeight: '700',
     marginTop: 22,
   },
   courseMetrics: {
-    borderTopColor: '#2a3145',
+    borderTopColor: COULEURS.separateur,
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 12,
@@ -576,17 +578,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   metricLabel: {
-    color: '#7f879b',
+    color: COULEURS.texteFaible,
     fontSize: 12,
   },
   metricValue: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 21,
     fontWeight: '800',
     marginTop: 3,
   },
   revenuValue: {
-    color: '#65d39a',
+    color: COULEURS.positif,
     fontSize: 21,
     fontWeight: '800',
     marginTop: 3,
@@ -599,12 +601,12 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   sectionTitre: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 18,
     fontWeight: '800',
   },
   detailLink: {
-    color: '#5fa8ff',
+    color: COULEURS.accentClair,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -613,7 +615,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   objectifBloc: {
-    backgroundColor: '#1a1f30',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.carteBordure,
+    borderWidth: 1,
     borderRadius: 14,
     marginTop: 10,
     padding: 14,
@@ -624,28 +628,30 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   objectifLabel: {
-    color: '#7f879b',
+    color: COULEURS.texteFaible,
     fontSize: 12,
   },
   objectifValeur: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 12,
     fontWeight: '700',
   },
   objectifRail: {
-    backgroundColor: '#2a3145',
+    backgroundColor: COULEURS.separateur,
     borderRadius: 4,
     height: 8,
     overflow: 'hidden',
   },
   objectifJauge: {
-    backgroundColor: '#65d39a',
+    backgroundColor: COULEURS.positif,
     borderRadius: 4,
     height: 8,
   },
   statCard: {
     alignItems: 'center',
-    backgroundColor: '#1a1f30',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.carteBordure,
+    borderWidth: 1,
     borderRadius: 14,
     flex: 1,
     minHeight: 92,
@@ -653,23 +659,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   statValue: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 18,
     fontWeight: '800',
   },
   statRevenue: {
-    color: '#65d39a',
+    color: COULEURS.positif,
     fontSize: 18,
     fontWeight: '800',
   },
   statLabel: {
-    color: '#7f879b',
+    color: COULEURS.texteFaible,
     fontSize: 11,
     marginTop: 6,
   },
   overlayCard: {
-    backgroundColor: '#1a1f30',
-    borderColor: '#293148',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 18,
     borderWidth: 1,
     marginTop: 24,
@@ -689,18 +695,18 @@ const styles = StyleSheet.create({
     width: 10,
   },
   serviceActif: {
-    backgroundColor: '#65d39a',
+    backgroundColor: COULEURS.positif,
   },
   serviceInactif: {
-    backgroundColor: '#697187',
+    backgroundColor: COULEURS.texteFaible,
   },
   overlayTitre: {
-    color: '#ffffff',
+    color: COULEURS.texte,
     fontSize: 17,
     fontWeight: '800',
   },
   overlayDescription: {
-    color: '#8f96aa',
+    color: COULEURS.texteSecondaire,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 7,
@@ -712,20 +718,20 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   overlayButtonPrimary: {
-    backgroundColor: '#4f9df8',
+    backgroundColor: COULEURS.accent,
   },
   overlayButtonSecondary: {
-    backgroundColor: '#252c40',
-    borderColor: '#39435e',
+    backgroundColor: COULEURS.boutonSecondaire,
+    borderColor: COULEURS.boutonSecondaireBordure,
     borderWidth: 1,
   },
   overlayButtonPrimaryText: {
-    color: '#07101f',
+    color: COULEURS.surAccent,
     fontSize: 15,
     fontWeight: '800',
   },
   overlayButtonSecondaryText: {
-    color: '#dce1ee',
+    color: COULEURS.texte,
     fontSize: 15,
     fontWeight: '800',
   },
