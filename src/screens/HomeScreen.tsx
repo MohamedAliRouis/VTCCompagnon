@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  AppState,
   Modal,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,7 @@ import {
   useSettingsStore,
   useStatsStore,
 } from '../store';
-import { useWidgetOverlay } from '../hooks';
+import { useOverlayControls } from '../hooks';
 import { COULEURS_ETAT, TEXTES_ETAT } from '../constants';
 import { formaterArgent, formaterTemps } from '../utils/formatters';
 
@@ -36,6 +37,7 @@ export const HomeScreen: React.FC = () => {
   const [modalStatsVisible, setModalStatsVisible] = useState(false);
   const [overlayActif, setOverlayActif] = useState(false);
   const [actionOverlayEnCours, setActionOverlayEnCours] = useState(false);
+  const [attentePermission, setAttentePermission] = useState(false);
 
   const course = useCourseStore(state => state.course);
   const chargerDepuisStockage = useCourseStore(state => state.chargerDepuisStockage);
@@ -56,7 +58,7 @@ export const HomeScreen: React.FC = () => {
     hideOverlay,
     updateOverlay,
     isRunning,
-  } = useWidgetOverlay();
+  } = useOverlayControls();
 
   useEffect(() => {
     Promise.all([
@@ -83,28 +85,8 @@ export const HomeScreen: React.FC = () => {
     }, [isRunning]),
   );
 
-  const activerOverlay = async () => {
-    if (!isSupported) {
-      Alert.alert('Non supporté', 'Le widget flottant est disponible uniquement sur Android.');
-      return;
-    }
-
+  const afficherOverlay = useCallback(async () => {
     setActionOverlayEnCours(true);
-    const permissionAccordee = await checkPermission();
-
-    if (!permissionAccordee) {
-      setActionOverlayEnCours(false);
-      Alert.alert(
-        'Permission requise',
-        'Autorisez VTC Compagnon à s’afficher par-dessus les autres applications.',
-        [
-          { text: 'Plus tard', style: 'cancel' },
-          { text: 'Ouvrir les réglages', onPress: requestPermission },
-        ],
-      );
-      return;
-    }
-
     const affiche = await showOverlay();
     if (affiche) {
       await updateOverlay();
@@ -113,7 +95,54 @@ export const HomeScreen: React.FC = () => {
       Alert.alert('Erreur', 'Impossible d’afficher le widget flottant.');
     }
     setActionOverlayEnCours(false);
+  }, [showOverlay, updateOverlay]);
+
+  const activerOverlay = async () => {
+    if (!isSupported) {
+      Alert.alert('Non supporté', 'Le widget flottant est disponible uniquement sur Android.');
+      return;
+    }
+
+    if (await checkPermission()) {
+      await afficherOverlay();
+      return;
+    }
+
+    Alert.alert(
+      'Permission requise',
+      'Autorisez VTC Compagnon à s’afficher par-dessus les autres applications.',
+      [
+        { text: 'Plus tard', style: 'cancel' },
+        {
+          text: 'Ouvrir les réglages',
+          onPress: () => {
+            setAttentePermission(true);
+            requestPermission();
+          },
+        },
+      ],
+    );
   };
+
+  // Retour depuis les réglages Android : si la permission vient d'être accordée,
+  // on affiche le widget sans que l'utilisateur ait à re-tapper le bouton.
+  useEffect(() => {
+    if (!attentePermission) {
+      return;
+    }
+
+    const sub = AppState.addEventListener('change', async etat => {
+      if (etat !== 'active') {
+        return;
+      }
+      setAttentePermission(false);
+      if (await checkPermission()) {
+        await afficherOverlay();
+      }
+    });
+
+    return () => sub.remove();
+  }, [attentePermission, checkPermission, afficherOverlay]);
 
   const desactiverOverlay = async () => {
     setActionOverlayEnCours(true);

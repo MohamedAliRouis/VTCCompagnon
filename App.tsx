@@ -12,7 +12,7 @@ import { HomeScreen, HistoryScreen, SettingsScreen } from './src/screens';
 import {
   useCourseTimer,
   useSessionTimer,
-  useWidgetOverlay,
+  useWidgetOverlayBridge,
 } from './src/hooks';
 
 const Tab = createBottomTabNavigator();
@@ -25,7 +25,7 @@ const ReglagesIcon = () => <Text style={styles.icon}>⚙️</Text>;
 function App() {
   useCourseTimer();
   useSessionTimer();
-  useWidgetOverlay(true);
+  useWidgetOverlayBridge();
 
   return (
     <SafeAreaProvider>
