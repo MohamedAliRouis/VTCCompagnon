@@ -9,10 +9,12 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '../store';
 import { COULEURS } from '../constants';
 
 export const SettingsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { settings, setTarifs, setNotifications } = useSettingsStore();
   const [priseEnCharge, setPriseEnCharge] = React.useState(
     settings.tarifs.priseEnCharge.toString()
@@ -48,7 +50,10 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingTop: insets.top }}
+    >
       <Text style={styles.titre}>⚙️ Paramètres</Text>
 
       {/* Tarifs */}
