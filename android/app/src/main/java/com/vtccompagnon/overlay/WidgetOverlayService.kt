@@ -232,19 +232,48 @@ class WidgetOverlayService : Service() {
 
     private fun setupButtons() {
         overlayView?.let { view ->
+            // Bouton principal - envoie un broadcast + vibration
             view.findViewById<Button>(R.id.btn_action)?.setOnClickListener {
+                vibrate()
                 val intent = Intent(this, WidgetActionReceiver::class.java).apply {
                     action = WidgetActionReceiver.ACTION_PRINCIPALE
                 }
                 sendBroadcast(intent)
             }
             
+            // Bouton secondaire - envoie un broadcast + vibration
             view.findViewById<Button>(R.id.btn_secondaire)?.setOnClickListener {
+                vibrate()
                 val intent = Intent(this, WidgetActionReceiver::class.java).apply {
                     action = WidgetActionReceiver.ACTION_SECONDAIRE
                 }
                 sendBroadcast(intent)
             }
+        }
+    }
+    
+    // Vibration pour retour haptique (sécurité conduite)
+    private fun vibrate() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+                vibratorManager.defaultVibrator.vibrate(
+                    android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE)
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(
+                        android.os.VibrationEffect.createOneShot(50, android.os.VibrationEffect.DEFAULT_AMPLITUDE)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(50)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

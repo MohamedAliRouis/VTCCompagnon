@@ -5,10 +5,10 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="12dp"
-    android:minWidth="140dp">
+    android:padding="16dp"
+    android:minWidth="180dp">
 
-    <!-- En-tête -->
+    <!-- En-tête compact -->
     <TextView
         android:id="@+id/tv_titre"
         android:layout_width="wrap_content"
@@ -16,7 +16,7 @@
         android:layout_gravity="center"
         android:text="🚗 VTC"
         android:textColor="#FFFFFF"
-        android:textSize="16sp"
+        android:textSize="18sp"
         android:textStyle="bold" />
 
     <!-- Badge état -->
@@ -25,25 +25,25 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
         android:background="@drawable/badge_background"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="2dp"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
         android:text="EN REPOS"
         android:textColor="#FFFFFF"
-        android:textSize="10sp"
+        android:textSize="12sp"
         android:textStyle="bold" />
 
-    <!-- Chronomètre -->
+    <!-- Chronomètre GROS -->
     <TextView
         android:id="@+id/tv_temps"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:text="⏱️ 00:00"
         android:textColor="#FFFFFF"
-        android:textSize="18sp"
+        android:textSize="24sp"
         android:textStyle="bold" />
 
     <!-- Revenu -->
@@ -52,39 +52,53 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
         android:text="💰 0,00 €"
         android:textColor="#FFD700"
-        android:textSize="14sp" />
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
-    <!-- Boutons -->
+    <!-- Boutons TRES GROS pour conduite -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="16dp"
         android:orientation="vertical">
 
+        <!-- Bouton principal - TRES GROS -->
         <Button
             android:id="@+id/btn_action"
             android:layout_width="match_parent"
-            android:layout_height="36dp"
+            android:layout_height="64dp"
             android:backgroundTint="#FFFFFF"
             android:text="▶ DÉMARRER"
             android:textColor="#1a1a2e"
-            android:textSize="11sp"
-            android:textStyle="bold" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:elevation="4dp" />
 
+        <!-- Bouton secondaire - GROS aussi -->
         <Button
             android:id="@+id/btn_secondaire"
             android:layout_width="match_parent"
-            android:layout_height="32dp"
-            android:layout_marginTop="4dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
             android:backgroundTint="#40FFFFFF"
             android:text="ANNULER"
             android:textColor="#FFFFFF"
-            android:textSize="10sp"
+            android:textSize="14sp"
             android:visibility="gone" />
 
     </LinearLayout>
+
+    <!-- Indicateur tactile (feedback visuel) -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="8dp"
+        android:text="👆 Appuyez pour changer d'état"
+        android:textColor="#80FFFFFF"
+        android:textSize="10sp" />
 
 </LinearLayout>
