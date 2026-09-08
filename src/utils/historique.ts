@@ -2,13 +2,18 @@ import { CourseHistorique, SessionHistorique, HistoriqueJour } from '../types';
 
 export type Periode = 'jour' | 'semaine' | 'mois';
 
+// En dessous, un taux horaire calculé sur si peu de temps n'a aucun sens.
+export const SEUIL_PRESENCE = 300; // 5 min
+
 export interface AgregatJour {
   date: string; // YYYY-MM-DD
   nbCourses: number;
   tempsConduite: number; // s : somme des durées de courses
   revenu: number;
-  tempsService: number; // s : somme des sessions du jour, hors pauses
+  tempsService: number; // s : somme des sessions terminées du jour, hors pauses
   tempsPause: number; // s
+  debutActivite: number; // epoch ms de la 1re activité du jour ; 0 si aucune
+  finActivite: number; // epoch ms de la fin de la dernière activité ; 0 si aucune
 }
 
 export interface AgregatPeriode {
@@ -21,11 +26,26 @@ export interface AgregatPeriode {
   revenu: number;
   tempsService: number;
   tempsPause: number;
-  revenuParHeure: number; // revenu / heures de service ; 0 sans service
-  ratioConduite: number; // tempsConduite / tempsService ; 0 sans service
+  // Temps de présence : service réellement terminé si dispo, sinon amplitude
+  // (1re course -> dernière course). Base des taux horaires.
+  tempsPresence: number;
+  revenuParHeure: number; // 0 si tempsPresence < SEUIL_PRESENCE
+  efficacite: number; // tempsConduite / tempsPresence, borné à 1 ; 0 sous le seuil
   revenuMoyenCourse: number;
   meilleurJour: AgregatJour | null; // jour de revenu max (> 0)
 }
+
+// Temps de présence d'un jour : service terminé si connu, sinon amplitude des
+// activités (courses + sessions), sinon le temps de conduite en dernier recours.
+export const tempsPresenceJour = (j: AgregatJour): number => {
+  if (j.tempsService > 0) {
+    return j.tempsService;
+  }
+  if (j.debutActivite > 0 && j.finActivite > j.debutActivite) {
+    return Math.round((j.finActivite - j.debutActivite) / 1000);
+  }
+  return j.tempsConduite;
+};
 
 // --- dates : local, granularité jour ---
 
@@ -147,7 +167,19 @@ const jourVide = (date: string): AgregatJour => ({
   revenu: 0,
   tempsService: 0,
   tempsPause: 0,
+  debutActivite: 0,
+  finActivite: 0,
 });
+
+const noterActivite = (j: AgregatJour, debut: number, fin: number) => {
+  if (debut > 0) {
+    j.debutActivite =
+      j.debutActivite === 0 ? debut : Math.min(j.debutActivite, debut);
+  }
+  if (fin > 0) {
+    j.finActivite = Math.max(j.finActivite, fin);
+  }
+};
 
 // Map date -> AgregatJour, à partir des logs bruts + fallback legacy.
 //
@@ -181,6 +213,7 @@ export const agregerParJour = (
     j.nbCourses += 1;
     j.tempsConduite += c.duree;
     j.revenu += c.revenu;
+    noterActivite(j, c.debut, c.debut + c.duree * 1000);
     map.set(c.date, j);
   }
 
@@ -188,6 +221,7 @@ export const agregerParJour = (
     const j = map.get(s.date) ?? jourVide(s.date);
     j.tempsService += s.tempsService;
     j.tempsPause += s.tempsPause;
+    noterActivite(j, s.debut, s.fin);
     map.set(s.date, j);
   }
 
@@ -222,16 +256,23 @@ export const agregatPeriode = (
     null,
   );
 
+  const tempsPresence = jours.reduce(
+    (acc, j) => acc + tempsPresenceJour(j),
+    0,
+  );
+  const fiable = tempsPresence >= SEUIL_PRESENCE;
+
   return {
     periode,
     debut,
     fin,
     jours,
     ...somme,
-    revenuParHeure:
-      somme.tempsService > 0 ? somme.revenu / (somme.tempsService / 3600) : 0,
-    ratioConduite:
-      somme.tempsService > 0 ? somme.tempsConduite / somme.tempsService : 0,
+    tempsPresence,
+    revenuParHeure: fiable ? somme.revenu / (tempsPresence / 3600) : 0,
+    efficacite: fiable
+      ? Math.min(1, somme.tempsConduite / tempsPresence)
+      : 0,
     revenuMoyenCourse: somme.nbCourses > 0 ? somme.revenu / somme.nbCourses : 0,
     meilleurJour,
   };

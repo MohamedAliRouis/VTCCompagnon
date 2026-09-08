@@ -140,16 +140,20 @@ export const HistoryScreen: React.FC = () => {
           label="Conduite"
         />
         <Tuile
-          valeur={`${formaterArgent(agregat.revenuParHeure)}/h`}
+          valeur={
+            agregat.revenuParHeure > 0
+              ? `${formaterArgent(agregat.revenuParHeure)}/h`
+              : '—'
+          }
           label="Revenu horaire"
         />
         <Tuile
           valeur={
-            agregat.tempsService > 0
-              ? `${Math.round(agregat.ratioConduite * 100)} %`
+            agregat.efficacite > 0
+              ? `${Math.round(agregat.efficacite * 100)} %`
               : '—'
           }
-          label="Conduite / service"
+          label="Efficacité"
         />
         <Tuile
           valeur={

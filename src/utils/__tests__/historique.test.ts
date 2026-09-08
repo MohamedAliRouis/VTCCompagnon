@@ -172,13 +172,24 @@ describe('agregerParJour', () => {
 });
 
 describe('agregatPeriode', () => {
+  // 09-07 : une course de 30 min, pas de service terminé -> présence = amplitude
+  // 09-09 : service terminé de 4 h + 2 courses (1 h 30 de conduite)
   const map = agregerParJour(
     [
-      { id: 'a', date: '2026-09-07', debut: 0, duree: 1800, revenu: 40 },
-      { id: 'b', date: '2026-09-09', debut: 0, duree: 1200, revenu: 20 },
-      { id: 'c', date: '2026-09-09', debut: 0, duree: 600, revenu: 15 },
+      { id: 'a', date: '2026-09-07', debut: 1_000_000, duree: 1800, revenu: 25 },
+      { id: 'b', date: '2026-09-09', debut: 2_100_000, duree: 3600, revenu: 30 },
+      { id: 'c', date: '2026-09-09', debut: 2_200_000, duree: 1800, revenu: 20 },
     ],
-    [{ id: 's', date: '2026-09-09', debut: 0, fin: 0, tempsService: 7200, tempsPause: 600 }],
+    [
+      {
+        id: 's',
+        date: '2026-09-09',
+        debut: 2_000_000,
+        fin: 2_000_000 + 14_400_000,
+        tempsService: 14400,
+        tempsPause: 1800,
+      },
+    ],
   );
 
   const agg = agregatPeriode(map, 'semaine', '2026-09-07', '2026-09-13');
@@ -191,27 +202,61 @@ describe('agregatPeriode', () => {
   it('somme les totaux', () => {
     expect(agg.nbCourses).toBe(3);
     expect(agg.revenu).toBe(75);
-    expect(agg.tempsConduite).toBe(3600);
-    expect(agg.tempsService).toBe(7200);
+    expect(agg.tempsConduite).toBe(7200);
+    expect(agg.tempsService).toBe(14400);
   });
 
-  it('calcule les indicateurs dérivés', () => {
-    expect(agg.revenuParHeure).toBeCloseTo(75 / 2, 5); // 7200 s = 2 h
-    expect(agg.ratioConduite).toBeCloseTo(3600 / 7200, 5);
+  it('temps de présence : service réel + amplitude en fallback', () => {
+    // 09-07 : amplitude 1800 s ; 09-09 : service 14400 s
+    expect(agg.tempsPresence).toBe(1800 + 14400);
+  });
+
+  it('calcule les indicateurs sur le temps de présence', () => {
+    expect(agg.revenuParHeure).toBeCloseTo(75 / (16200 / 3600), 5);
+    expect(agg.efficacite).toBeCloseTo(7200 / 16200, 5);
     expect(agg.revenuMoyenCourse).toBeCloseTo(75 / 3, 5);
   });
 
+  it('efficacité est bornée à 100 %', () => {
+    const m = agregerParJour(
+      [{ id: 'x', date: '2026-09-07', debut: 1000, duree: 3600, revenu: 5 }],
+      [
+        {
+          id: 'y',
+          date: '2026-09-07',
+          debut: 1000,
+          fin: 1000 + 1_200_000,
+          tempsService: 1200, // service plus court que la conduite (donnée douteuse)
+          tempsPause: 0,
+        },
+      ],
+    );
+    const a = agregatPeriode(m, 'jour', '2026-09-07', '2026-09-07');
+    expect(a.efficacite).toBe(1);
+  });
+
+  it('sous le seuil de 5 min : pas de taux horaire', () => {
+    const m = agregerParJour(
+      [{ id: 'z', date: '2026-09-07', debut: 1000, duree: 60, revenu: 3 }],
+      [],
+    );
+    const a = agregatPeriode(m, 'jour', '2026-09-07', '2026-09-07');
+    expect(a.revenuParHeure).toBe(0);
+    expect(a.efficacite).toBe(0);
+  });
+
   it('identifie le meilleur jour (revenu max)', () => {
-    // 09-07 : 40 ; 09-09 : 20 + 15 = 35
-    expect(agg.meilleurJour?.date).toBe('2026-09-07');
-    expect(agg.meilleurJour?.revenu).toBe(40);
+    // 09-07 : 25 ; 09-09 : 30 + 20 = 50
+    expect(agg.meilleurJour?.date).toBe('2026-09-09');
+    expect(agg.meilleurJour?.revenu).toBe(50);
   });
 
   it('meilleurJour est null sans revenu', () => {
     const vide = agregatPeriode(new Map(), 'semaine', '2026-09-07', '2026-09-13');
     expect(vide.meilleurJour).toBeNull();
     expect(vide.revenuParHeure).toBe(0);
-    expect(vide.ratioConduite).toBe(0);
+    expect(vide.efficacite).toBe(0);
+    expect(vide.tempsPresence).toBe(0);
   });
 });
 
