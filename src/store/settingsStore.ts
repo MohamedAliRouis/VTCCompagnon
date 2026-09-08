@@ -11,6 +11,7 @@ interface SettingsState {
   chargerSettings: () => Promise<void>;
   setTarifs: (tarifs: Tarifs) => Promise<void>;
   setNotifications: (actives: boolean) => Promise<void>;
+  setObjectifJournalier: (objectif: number | null) => Promise<void>;
 }
 
 const settingsInitiaux: Settings = {
@@ -38,6 +39,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setNotifications: async (actives: boolean) => {
     const { settings } = get();
     const nouveauxSettings = { ...settings, notifications: actives };
+    set({ settings: nouveauxSettings });
+    await sauvegarderSettings(nouveauxSettings);
+  },
+
+  setObjectifJournalier: async (objectif: number | null) => {
+    const { settings } = get();
+    const nouveauxSettings: Settings = { ...settings };
+    if (objectif && objectif > 0) {
+      nouveauxSettings.objectifJournalier = objectif;
+    } else {
+      delete nouveauxSettings.objectifJournalier;
+    }
     set({ settings: nouveauxSettings });
     await sauvegarderSettings(nouveauxSettings);
   },

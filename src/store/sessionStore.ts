@@ -5,6 +5,7 @@ import {
   sauvegarderSessionTravail,
 } from '../utils/storage';
 import { getDateJour } from '../utils/formatters';
+import { useHistoryStore } from './historyStore';
 
 interface SessionState {
   session: SessionTravail;
@@ -112,9 +113,27 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   terminerService: () => {
-    const session = creerSessionInitiale();
-    set({ session });
-    sauvegarderSessionTravail(session);
+    const { session } = get();
+
+    // Journaliser le service qui s'achève avant de réinitialiser.
+    if (session.etat !== 'HORS_SERVICE' && session.tempsDebutService) {
+      const fin = Date.now();
+      const finale = calculerTemps(session, fin);
+      const tempsPause = finale.tempsPauseCumule + finale.tempsPauseEcoule;
+      if (finale.tempsServiceEcoule + tempsPause >= 1) {
+        // fire-and-forget : la persistance ne bloque pas la réinitialisation
+        useHistoryStore.getState().enregistrerSession({
+          debut: session.tempsDebutService,
+          fin,
+          tempsService: finale.tempsServiceEcoule,
+          tempsPause,
+        });
+      }
+    }
+
+    const nouvelle = creerSessionInitiale();
+    set({ session: nouvelle });
+    sauvegarderSessionTravail(nouvelle);
   },
 
   majTemps: (maintenant: number) => {

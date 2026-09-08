@@ -6,6 +6,8 @@ import {
   Settings,
   Course,
   SessionTravail,
+  CourseHistorique,
+  SessionHistorique,
 } from '../types';
 import { TARIFS_DEFAUT } from '../constants';
 import { getDateJour } from './formatters';
@@ -59,26 +61,39 @@ export const chargerStatsJour = async (): Promise<StatsJour> => {
   };
 };
 
-// Charger l'historique (7 derniers jours max)
+// Ancien agrégat journalier (@vtc_historique) : conservé en lecture seule comme
+// fallback pour les données créées avant le journal détaillé. Plus jamais écrit.
 export const chargerHistorique = async (): Promise<HistoriqueJour[]> => {
   const historique = await charger<HistoriqueJour[]>(CLES_STOCKAGE.HISTORIQUE);
   return historique || [];
 };
 
-// Ajouter une journée à l'historique
-export const ajouterHistorique = async (stats: StatsJour): Promise<void> => {
-  const historique = await chargerHistorique();
-  const nouvelHistorique = [
-    ...historique.filter(h => h.date !== stats.date),
-    {
-      date: stats.date,
-      nbCourses: stats.nbCourses,
-      tempsTotal: stats.tempsTotal,
-      revenuTotal: stats.revenuTotal,
-    },
-  ].slice(-7); // Garder 7 derniers jours
-  
-  await sauvegarder(CLES_STOCKAGE.HISTORIQUE, nouvelHistorique);
+// Journal des courses terminées
+export const chargerCoursesHistorique = async (): Promise<CourseHistorique[]> => {
+  return (
+    (await charger<CourseHistorique[]>(CLES_STOCKAGE.COURSES_HISTORIQUE)) || []
+  );
+};
+
+export const sauvegarderCoursesHistorique = async (
+  courses: CourseHistorique[],
+): Promise<void> => {
+  await sauvegarder(CLES_STOCKAGE.COURSES_HISTORIQUE, courses);
+};
+
+// Journal des services terminés
+export const chargerSessionsHistorique = async (): Promise<
+  SessionHistorique[]
+> => {
+  return (
+    (await charger<SessionHistorique[]>(CLES_STOCKAGE.SESSIONS_HISTORIQUE)) || []
+  );
+};
+
+export const sauvegarderSessionsHistorique = async (
+  sessions: SessionHistorique[],
+): Promise<void> => {
+  await sauvegarder(CLES_STOCKAGE.SESSIONS_HISTORIQUE, sessions);
 };
 
 // Charger la course en cours

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import {
   useCourseStore,
+  useHistoryStore,
   useSessionStore,
   useSettingsStore,
   useStatsStore,
@@ -16,6 +17,7 @@ export const useBootstrap = (): void => {
   const chargerSession = useSessionStore(s => s.chargerDepuisStockage);
   const chargerSettings = useSettingsStore(s => s.chargerSettings);
   const chargerStats = useStatsStore(s => s.chargerStats);
+  const chargerHistorique = useHistoryStore(s => s.chargerHistorique);
 
   useEffect(() => {
     Promise.all([
@@ -23,6 +25,13 @@ export const useBootstrap = (): void => {
       chargerSession(),
       chargerSettings(),
       chargerStats(),
+      chargerHistorique(),
     ]).catch(e => console.error('Erreur bootstrap:', e));
-  }, [chargerCourse, chargerSession, chargerSettings, chargerStats]);
+  }, [
+    chargerCourse,
+    chargerSession,
+    chargerSettings,
+    chargerStats,
+    chargerHistorique,
+  ]);
 };

@@ -95,7 +95,11 @@ export const useWidgetOverlayBridge = (): void => {
         const { tarifPriseEnCharge: pec, tarifParMinute: min } =
           stateRef.current;
         const [tempsEcoule, revenu] = calcTempsEtRevenu(cDebut, pec, min);
-        terminerCourse(tempsEcoule, revenu);
+        terminerCourse({
+          tempsEcoule,
+          revenu,
+          debut: cDebut ?? Date.now() - tempsEcoule * 1000,
+        });
         arriveeDestination();
         break;
       }

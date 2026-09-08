@@ -10,6 +10,13 @@ jest.mock('../../utils/storage', () => ({
   sauvegarderSessionTravail: jest.fn(),
 }));
 
+const mockEnregistrerSession = jest.fn();
+jest.mock('../historyStore', () => ({
+  useHistoryStore: {
+    getState: () => ({ enregistrerSession: mockEnregistrerSession }),
+  },
+}));
+
 const storage = require('../../utils/storage');
 
 const store = () => useSessionStore.getState();
@@ -30,6 +37,7 @@ beforeEach(() => {
   store().terminerService(); // remet la session à HORS_SERVICE
   (storage.chargerSessionTravail as jest.Mock).mockReset();
   (storage.sauvegarderSessionTravail as jest.Mock).mockReset();
+  mockEnregistrerSession.mockReset();
 });
 
 afterEach(() => {
@@ -170,6 +178,29 @@ describe('fin de service', () => {
     expect(session().tempsPauseEcoule).toBe(0);
     expect(session().tempsPauseCumule).toBe(0);
     expect(session().tempsDebutService).toBeNull();
+  });
+
+  it('journalise le service terminé (service + pauses)', () => {
+    store().commencerService();
+    setNow(T0 + 60_000);
+    store().mettreEnPause();
+    setNow(T0 + 60_000 + 30_000); // 30 s de pause
+    store().reprendreService();
+    setNow(T0 + 60_000 + 30_000 + 20_000); // +20 s de service
+
+    store().terminerService();
+
+    expect(mockEnregistrerSession).toHaveBeenCalledWith({
+      debut: T0,
+      fin: T0 + 110_000,
+      tempsService: 80, // 60 + 20
+      tempsPause: 30,
+    });
+  });
+
+  it('ne journalise rien si aucun service en cours', () => {
+    store().terminerService();
+    expect(mockEnregistrerSession).not.toHaveBeenCalled();
   });
 });
 

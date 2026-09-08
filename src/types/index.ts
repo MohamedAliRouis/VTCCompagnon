@@ -36,6 +36,25 @@ export interface HistoriqueJour {
   revenuTotal: number;
 }
 
+// Journal : une ligne par course terminée.
+export interface CourseHistorique {
+  id: string;
+  date: string; // YYYY-MM-DD local
+  debut: number; // epoch ms
+  duree: number; // secondes
+  revenu: number;
+}
+
+// Journal : une ligne par service terminé.
+export interface SessionHistorique {
+  id: string;
+  date: string; // YYYY-MM-DD local
+  debut: number; // epoch ms
+  fin: number; // epoch ms
+  tempsService: number; // secondes travaillées, hors pauses
+  tempsPause: number; // secondes de pause cumulées
+}
+
 export interface Tarifs {
   priseEnCharge: number;
   parMinute: number;
@@ -45,4 +64,5 @@ export interface Tarifs {
 export interface Settings {
   tarifs: Tarifs;
   notifications: boolean;
+  objectifJournalier?: number; // revenu cible du jour, en €
 }
