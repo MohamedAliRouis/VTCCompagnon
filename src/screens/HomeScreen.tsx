@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatsModal } from '../components/Stats';
 import { useCourseStore, useSessionStore, useStatsStore } from '../store';
 import { useOverlayControls } from '../hooks';
@@ -219,7 +220,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.surtitre}>VTC COMPAGNON</Text>
         <Text style={styles.titre}>Tableau de bord</Text>
@@ -371,7 +372,7 @@ export const HomeScreen: React.FC = () => {
       >
         <StatsModal onClose={() => setModalStatsVisible(false)} />
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 12,
     paddingBottom: 32,
   },
   surtitre: {

@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStatsStore } from '../store';
 import { COULEURS } from '../constants';
 import { formaterTemps, formaterArgent, formaterDate } from '../utils/formatters';
 
 export const HistoryScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { historique, statsJour } = useStatsStore();
 
   // Calcul totaux semaine
@@ -18,7 +20,10 @@ export const HistoryScreen: React.FC = () => {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingTop: insets.top }}
+    >
       <Text style={styles.titre}>📅 Historique</Text>
 
       {/* Aujourd'hui */}
