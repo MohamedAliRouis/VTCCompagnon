@@ -38,17 +38,17 @@ const MetriquesSession = React.memo<{ enPause: boolean }>(({ enPause }) => {
 
   return (
     <View style={styles.sessionMetrics}>
-      <View>
+      <View style={styles.metricCol}>
         <Text style={styles.metricLabel}>Temps travaillé</Text>
-        <Text style={styles.sessionTimeValue}>
+        <Text style={styles.sessionTimeValue} numberOfLines={1} adjustsFontSizeToFit>
           {formaterTemps(tempsServiceEcoule)}
         </Text>
       </View>
-      <View style={styles.metricRight}>
+      <View style={styles.metricColRight}>
         <Text style={styles.metricLabel}>
           {enPause ? 'Pause actuelle' : 'Pauses cumulées'}
         </Text>
-        <Text style={styles.pauseTimeValue}>
+        <Text style={styles.pauseTimeValue} numberOfLines={1} adjustsFontSizeToFit>
           {formaterTemps(enPause ? tempsPauseEcoule : tempsPauseCumule)}
         </Text>
       </View>
@@ -63,13 +63,17 @@ const MetriquesCourse = React.memo(() => {
 
   return (
     <View style={styles.courseMetrics}>
-      <View>
+      <View style={styles.metricCol}>
         <Text style={styles.metricLabel}>Temps</Text>
-        <Text style={styles.metricValue}>{formaterTemps(tempsEcoule)}</Text>
+        <Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit>
+          {formaterTemps(tempsEcoule)}
+        </Text>
       </View>
-      <View style={styles.metricRight}>
+      <View style={styles.metricColRight}>
         <Text style={styles.metricLabel}>Revenu estimé</Text>
-        <Text style={styles.revenuValue}>{formaterArgent(revenuEstime)}</Text>
+        <Text style={styles.revenuValue} numberOfLines={1} adjustsFontSizeToFit>
+          {formaterArgent(revenuEstime)}
+        </Text>
       </View>
     </View>
   );
@@ -448,7 +452,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#2a3145',
     borderTopWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
     marginTop: 18,
     paddingTop: 16,
   },
@@ -527,11 +531,15 @@ const styles = StyleSheet.create({
     borderTopColor: '#2a3145',
     borderTopWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
     marginTop: 18,
     paddingTop: 16,
   },
-  metricRight: {
+  metricCol: {
+    flex: 1,
+  },
+  metricColRight: {
+    flex: 1,
     alignItems: 'flex-end',
   },
   metricLabel: {
