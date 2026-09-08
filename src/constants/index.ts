@@ -7,6 +7,7 @@ export const CLES_STOCKAGE = {
   DATE_DERNIER_RESET: '@vtc_date_reset',
   HISTORIQUE: '@vtc_historique',
   SETTINGS: '@vtc_settings',
+  SESSION_TRAVAIL: '@vtc_session_travail',
 } as const;
 
 // Tarifs par défaut (modifiables dans Settings)

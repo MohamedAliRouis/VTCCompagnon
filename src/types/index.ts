@@ -1,6 +1,7 @@
 // Types pour VTC Compagnon
 
 export type EtatCourse = 'REPOS' | 'PICKUP' | 'EN_COURSE';
+export type EtatSession = 'HORS_SERVICE' | 'EN_SERVICE' | 'EN_PAUSE';
 
 export interface Course {
   id: string;
@@ -9,6 +10,16 @@ export interface Course {
   tempsEcoule: number;
   revenuEstime: number;
   dateCreation: string; // ISO string
+}
+
+export interface SessionTravail {
+  etat: EtatSession;
+  tempsDebutService: number | null;
+  tempsDebutPause: number | null;
+  tempsServiceEcoule: number;
+  tempsPauseEcoule: number;
+  tempsPauseCumule: number;
+  date: string;
 }
 
 export interface StatsJour {

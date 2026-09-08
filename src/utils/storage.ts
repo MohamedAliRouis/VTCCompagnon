@@ -1,6 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CLES_STOCKAGE } from '../constants';
-import { StatsJour, HistoriqueJour, Settings, Course } from '../types';
+import {
+  StatsJour,
+  HistoriqueJour,
+  Settings,
+  Course,
+  SessionTravail,
+} from '../types';
 import { TARIFS_DEFAUT } from '../constants';
 
 // Charger une valeur
@@ -82,6 +88,16 @@ export const chargerCourseEnCours = async (): Promise<Course | null> => {
 // Sauvegarder la course en cours
 export const sauvegarderCourseEnCours = async (course: Course): Promise<void> => {
   await sauvegarder(CLES_STOCKAGE.COURSE_EN_COURS, course);
+};
+
+export const chargerSessionTravail = async (): Promise<SessionTravail | null> => {
+  return charger<SessionTravail>(CLES_STOCKAGE.SESSION_TRAVAIL);
+};
+
+export const sauvegarderSessionTravail = async (
+  session: SessionTravail,
+): Promise<void> => {
+  await sauvegarder(CLES_STOCKAGE.SESSION_TRAVAIL, session);
 };
 
 // Charger les settings
