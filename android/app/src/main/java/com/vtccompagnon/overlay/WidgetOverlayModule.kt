@@ -12,10 +12,19 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
 
     override fun getName(): String = "WidgetOverlay"
 
+    init {
+        // Enregistrer le contexte React Native dans le receiver
+        WidgetActionReceiver.reactContext = reactContext
+    }
+
     private fun sendEvent(eventName: String) {
-        reactApplicationContext
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            .emit(eventName, null)
+        try {
+            reactApplicationContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                .emit(eventName, null)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     @ReactMethod
@@ -54,14 +63,6 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
     fun showOverlay(promise: Promise) {
         val context = reactApplicationContext
         
-        // Configurer les callbacks statiques AVANT de démarrer le service
-        WidgetOverlayService.onActionPrincipale = {
-            sendEvent("WidgetActionPrincipale")
-        }
-        WidgetOverlayService.onActionSecondaire = {
-            sendEvent("WidgetActionSecondaire")
-        }
-        
         val intent = Intent(context, WidgetOverlayService::class.java).apply {
             action = WidgetOverlayService.ACTION_SHOW
         }
@@ -94,13 +95,14 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
     }
 
     @ReactMethod
-    fun updateOverlay(etat: String, temps: Double, revenu: Double, promise: Promise) {
+    fun updateOverlay(etat: String, tempsDebut: Double, tarifPec: Double, tarifMin: Double, promise: Promise) {
         val context = reactApplicationContext
         val intent = Intent(context, WidgetOverlayService::class.java).apply {
             action = WidgetOverlayService.ACTION_UPDATE
             putExtra(WidgetOverlayService.EXTRA_ETAT, etat)
-            putExtra(WidgetOverlayService.EXTRA_TEMPS, temps.toLong())
-            putExtra(WidgetOverlayService.EXTRA_REVENU, revenu)
+            putExtra(WidgetOverlayService.EXTRA_TEMPS_DEBUT, tempsDebut.toLong())
+            putExtra(WidgetOverlayService.EXTRA_TARIF_PEC, tarifPec)
+            putExtra(WidgetOverlayService.EXTRA_TARIF_MIN, tarifMin)
         }
         
         try {

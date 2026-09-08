@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { NativeModules, Platform, NativeEventEmitter } from 'react-native';
-import { useCourseStore, useStatsStore } from '../store';
+import { useCourseStore, useStatsStore, useSettingsStore } from '../store';
 
 const { WidgetOverlay } = NativeModules;
 
@@ -17,6 +17,7 @@ interface UseWidgetOverlayReturn {
 export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
   const { course, demarrerCourse, clientMonte, arriveeDestination, terminerRetour, annulerCourse, nouvelleCourse } = useCourseStore();
   const { terminerCourse } = useStatsStore();
+  const { settings } = useSettingsStore();
   
   const isSupported = Platform.OS === 'android';
   const eventEmitter = useRef<NativeEventEmitter | null>(null);
@@ -24,8 +25,11 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
   // Références stables pour les callbacks
   const courseRef = useRef(course);
   courseRef.current = course;
+  
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
-  // Actions du widget (définies avec useRef pour éviter les re-renders)
+  // Actions du widget
   const handleActionPrincipale = useCallback(() => {
     const currentCourse = courseRef.current;
     switch (currentCourse.etat) {
@@ -67,7 +71,6 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
     
     eventEmitter.current = new NativeEventEmitter(WidgetOverlay);
     
-    // Écouter les actions depuis l'overlay
     const subscriptionPrincipale = eventEmitter.current.addListener(
       'WidgetActionPrincipale',
       handleActionPrincipale
@@ -95,7 +98,7 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
     }
   }, [isSupported]);
 
-  // Demander la permission (ouvre les paramètres)
+  // Demander la permission
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) return false;
     try {
@@ -128,19 +131,21 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
     }
   }, [isSupported]);
 
-  // Mettre à jour l'overlay avec l'état actuel
+  // Mettre à jour l'overlay - envoie tempsDebut et tarifs, le service calcule le reste
   const updateOverlay = useCallback(async () => {
     if (!isSupported) return;
     try {
+      const currentSettings = settingsRef.current;
       await WidgetOverlay.updateOverlay(
         course.etat,
-        course.tempsEcoule,
-        course.revenuEstime
+        course.tempsDebut || 0,  // timestamp de début, pas temps écoulé
+        currentSettings.tarifs.priseEnCharge,
+        currentSettings.tarifs.parMinute
       );
     } catch (e) {
       console.error('Erreur updateOverlay:', e);
     }
-  }, [isSupported, course.etat, course.tempsEcoule, course.revenuEstime]);
+  }, [isSupported, course.etat, course.tempsDebut]);
 
   // Vérifier si l'overlay est en cours d'exécution
   const isRunning = useCallback(async (): Promise<boolean> => {
@@ -158,7 +163,7 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
     if (isSupported) {
       updateOverlay();
     }
-  }, [isSupported, course.etat, course.tempsEcoule, course.revenuEstime, updateOverlay]);
+  }, [isSupported, course.etat, course.tempsDebut, updateOverlay]);
 
   return {
     isSupported,

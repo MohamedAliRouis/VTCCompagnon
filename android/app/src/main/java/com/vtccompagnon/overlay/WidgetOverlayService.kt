@@ -9,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -32,6 +34,26 @@ class WidgetOverlayService : Service() {
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
+    
+    // Chronomètre natif
+    private var tempsDebut: Long = 0
+    private var etatActuel: String = "REPOS"
+    private var tarifPriseEnCharge: Double = 2.50
+    private var tarifParMinute: Double = 0.35
+    
+    private val handler = Handler(Looper.getMainLooper())
+    private val chronoRunnable = object : Runnable {
+        override fun run() {
+            if (etatActuel != "REPOS" && tempsDebut > 0) {
+                val tempsEcoule = (System.currentTimeMillis() - tempsDebut) / 1000
+                val minutes = tempsEcoule / 60.0
+                val revenu = tarifPriseEnCharge + (minutes * tarifParMinute)
+                
+                updateUI(etatActuel, tempsEcoule, revenu)
+            }
+            handler.postDelayed(this, 1000)
+        }
+    }
 
     companion object {
         const val CHANNEL_ID = "vtc_compagnon_overlay"
@@ -42,16 +64,13 @@ class WidgetOverlayService : Service() {
         const val ACTION_UPDATE = "ACTION_UPDATE"
         
         const val EXTRA_ETAT = "EXTRA_ETAT"
-        const val EXTRA_TEMPS = "EXTRA_TEMPS"
-        const val EXTRA_REVENU = "EXTRA_REVENU"
+        const val EXTRA_TEMPS_DEBUT = "EXTRA_TEMPS_DEBUT"
+        const val EXTRA_TARIF_PEC = "EXTRA_TARIF_PEC"
+        const val EXTRA_TARIF_MIN = "EXTRA_TARIF_MIN"
         
         @Volatile
         var isRunning = false
             private set
-            
-        // Callbacks statiques pour les actions (seront définis par le module RN)
-        var onActionPrincipale: (() -> Unit)? = null
-        var onActionSecondaire: (() -> Unit)? = null
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -66,11 +85,25 @@ class WidgetOverlayService : Service() {
         when (intent?.action) {
             ACTION_SHOW -> showOverlay()
             ACTION_HIDE -> hideOverlay()
-            ACTION_UPDATE -> updateOverlay(
-                etat = intent.getStringExtra(EXTRA_ETAT) ?: "REPOS",
-                temps = intent.getLongExtra(EXTRA_TEMPS, 0),
-                revenu = intent.getDoubleExtra(EXTRA_REVENU, 0.0)
-            )
+            ACTION_UPDATE -> {
+                etatActuel = intent.getStringExtra(EXTRA_ETAT) ?: "REPOS"
+                tempsDebut = intent.getLongExtra(EXTRA_TEMPS_DEBUT, 0)
+                tarifPriseEnCharge = intent.getDoubleExtra(EXTRA_TARIF_PEC, 2.50)
+                tarifParMinute = intent.getDoubleExtra(EXTRA_TARIF_MIN, 0.35)
+                
+                // Démarrer/arrêter le chrono selon l'état
+                if (etatActuel != "REPOS" && tempsDebut > 0) {
+                    startChrono()
+                } else {
+                    stopChrono()
+                }
+                
+                // Mise à jour immédiate
+                val tempsEcoule = if (tempsDebut > 0) (System.currentTimeMillis() - tempsDebut) / 1000 else 0
+                val minutes = tempsEcoule / 60.0
+                val revenu = tarifPriseEnCharge + (minutes * tarifParMinute)
+                updateUI(etatActuel, tempsEcoule, revenu)
+            }
         }
         
         startForeground(NOTIFICATION_ID, createNotification())
@@ -81,8 +114,18 @@ class WidgetOverlayService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopChrono()
         hideOverlay()
         isRunning = false
+    }
+
+    private fun startChrono() {
+        handler.removeCallbacks(chronoRunnable)
+        handler.post(chronoRunnable)
+    }
+
+    private fun stopChrono() {
+        handler.removeCallbacks(chronoRunnable)
     }
 
     private fun createNotificationChannel() {
@@ -190,11 +233,17 @@ class WidgetOverlayService : Service() {
     private fun setupButtons() {
         overlayView?.let { view ->
             view.findViewById<Button>(R.id.btn_action)?.setOnClickListener {
-                onActionPrincipale?.invoke()
+                val intent = Intent(this, WidgetActionReceiver::class.java).apply {
+                    action = WidgetActionReceiver.ACTION_PRINCIPALE
+                }
+                sendBroadcast(intent)
             }
             
             view.findViewById<Button>(R.id.btn_secondaire)?.setOnClickListener {
-                onActionSecondaire?.invoke()
+                val intent = Intent(this, WidgetActionReceiver::class.java).apply {
+                    action = WidgetActionReceiver.ACTION_SECONDAIRE
+                }
+                sendBroadcast(intent)
             }
         }
     }
@@ -211,8 +260,9 @@ class WidgetOverlayService : Service() {
         isOverlayShowing = false
     }
 
-    private fun updateOverlay(etat: String, temps: Long, revenu: Double) {
+    private fun updateUI(etat: String, tempsEcoule: Long, revenu: Double) {
         overlayView?.let { view ->
+            // État
             view.findViewById<TextView>(R.id.tv_etat)?.text = when(etat) {
                 "REPOS" -> "EN REPOS"
                 "PICKUP" -> "VERS CLIENT"
@@ -221,9 +271,11 @@ class WidgetOverlayService : Service() {
                 else -> etat
             }
             
-            view.findViewById<TextView>(R.id.tv_temps)?.text = "⏱️ ${formatTemps(temps)}"
+            // Temps et revenu
+            view.findViewById<TextView>(R.id.tv_temps)?.text = "⏱️ ${formatTemps(tempsEcoule)}"
             view.findViewById<TextView>(R.id.tv_revenu)?.text = "💰 ${formatArgent(revenu)}"
             
+            // Boutons
             val btnPrincipal = view.findViewById<Button>(R.id.btn_action)
             val btnSecondaire = view.findViewById<Button>(R.id.btn_secondaire)
             
@@ -249,6 +301,7 @@ class WidgetOverlayService : Service() {
                 }
             }
             
+            // Couleur
             val couleur = when(etat) {
                 "REPOS" -> 0xE64a4a6a.toInt()
                 "PICKUP" -> 0xE6f39c12.toInt()

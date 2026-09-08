@@ -34,6 +34,16 @@
         android:enabled="true"
         android:exported="false"
         android:foregroundServiceType="specialUse" />
+      
+      <!-- Receiver pour les actions du widget -->
+      <receiver
+        android:name=".overlay.WidgetActionReceiver"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="com.vtccompagnon.ACTION_PRINCIPALE" />
+          <action android:name="com.vtccompagnon.ACTION_SECONDAIRE" />
+        </intent-filter>
+      </receiver>
         
     </application>
 </manifest>

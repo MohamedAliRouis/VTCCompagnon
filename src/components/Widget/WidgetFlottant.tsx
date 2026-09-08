@@ -13,6 +13,7 @@ import { formaterArgent } from '../../utils/formatters';
 import { WidgetBadge } from './WidgetBadge';
 import { WidgetChrono } from './WidgetChrono';
 import { WidgetActions } from './WidgetActions';
+import { useWidgetOverlay } from '../../hooks/useWidgetOverlay';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -33,10 +34,13 @@ export const WidgetFlottant: React.FC<WidgetFlottantProps> = ({ onStatsPress }) 
   } = useCourseStore();
   const { statsJour, terminerCourse } = useStatsStore();
   
+  // Hook pour l'overlay Android (synchronisation)
+  const { updateOverlay } = useWidgetOverlay();
+  
   // Référence pour l'intervalle du chronomètre
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Effet pour le chronomètre
+  // Effet pour le chronomètre + mise à jour overlay
   useEffect(() => {
     if (course.etat !== 'REPOS' && course.tempsDebut) {
       // Démarrer le chronomètre
@@ -60,6 +64,11 @@ export const WidgetFlottant: React.FC<WidgetFlottantProps> = ({ onStatsPress }) 
       }
     };
   }, [course.etat, course.tempsDebut, majTemps]);
+
+  // Synchroniser avec l'overlay Android quand les valeurs changent
+  useEffect(() => {
+    updateOverlay();
+  }, [course.etat, course.tempsEcoule, course.revenuEstime, updateOverlay]);
   
   // Position draggable
   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 180, y: 100 })).current;
