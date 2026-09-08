@@ -91,14 +91,4 @@
 
     </LinearLayout>
 
-    <!-- Indicateur tactile (feedback visuel) -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="8dp"
-        android:text="👆 Appuyez pour changer d'état"
-        android:textColor="#80FFFFFF"
-        android:textSize="10sp" />
-
 </LinearLayout>

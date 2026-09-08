@@ -13,7 +13,7 @@ interface CourseState {
   demarrerCourse: () => void;
   clientMonte: () => void;
   arriveeDestination: () => void;
-  terminerRetour: () => void;
+  terminerCourse: () => void;
   annulerCourse: () => void;
   nouvelleCourse: () => void;
   majTemps: (tempsEcoule: number) => void;
@@ -57,15 +57,13 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   },
 
   arriveeDestination: () => {
-    const { course } = get();
-    if (course.etat === 'EN_COURSE') {
-      const maj = { ...course, etat: 'RETOUR' as EtatCourse };
-      set({ course: maj });
-      sauvegarderCourseEnCours(maj);
-    }
+    // Termine directement la course (plus d'état RETOUR)
+    set({ course: courseInitiale });
+    sauvegarderCourseEnCours(courseInitiale);
   },
 
-  terminerRetour: () => {
+  terminerCourse: () => {
+    // Alias pour arriveeDestination
     set({ course: courseInitiale });
     sauvegarderCourseEnCours(courseInitiale);
   },

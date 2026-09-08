@@ -21,7 +21,6 @@ export const COULEURS_ETAT: Record<string, string> = {
   REPOS: '#4a4a6a',
   PICKUP: '#f39c12',
   EN_COURSE: '#27ae60',
-  RETOUR: '#3498db',
 };
 
 // Textes par état
@@ -29,7 +28,6 @@ export const TEXTES_ETAT: Record<string, string> = {
   REPOS: 'EN REPOS',
   PICKUP: 'VERS CLIENT',
   EN_COURSE: 'EN COURSE',
-  RETOUR: 'RETOUR',
 };
 
 // Textes boutons
@@ -37,11 +35,9 @@ export const TEXTES_BOUTON_PRINCIPAL: Record<string, string> = {
   REPOS: '▶ DÉMARRER',
   PICKUP: 'CLIENT MONTÉ',
   EN_COURSE: 'ARRIVÉE',
-  RETOUR: 'TERMINER',
 };
 
 export const TEXTES_BOUTON_SECONDAIRE: Record<string, string> = {
   PICKUP: 'ANNULER',
   EN_COURSE: 'TERMINER',
-  RETOUR: 'NOUVELLE',
 };

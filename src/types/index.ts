@@ -1,6 +1,6 @@
 // Types pour VTC Compagnon
 
-export type EtatCourse = 'REPOS' | 'PICKUP' | 'EN_COURSE' | 'RETOUR';
+export type EtatCourse = 'REPOS' | 'PICKUP' | 'EN_COURSE';
 
 export interface Course {
   id: string;

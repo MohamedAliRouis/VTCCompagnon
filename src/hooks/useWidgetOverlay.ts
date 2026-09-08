@@ -15,7 +15,7 @@ interface UseWidgetOverlayReturn {
 }
 
 export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
-  const { course, demarrerCourse, clientMonte, arriveeDestination, terminerRetour, annulerCourse, nouvelleCourse } = useCourseStore();
+  const { course, demarrerCourse, clientMonte, arriveeDestination, annulerCourse } = useCourseStore();
   const { terminerCourse } = useStatsStore();
   const { settings } = useSettingsStore();
   
@@ -43,11 +43,8 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
         terminerCourse(currentCourse.tempsEcoule, currentCourse.revenuEstime);
         arriveeDestination();
         break;
-      case 'RETOUR':
-        terminerRetour();
-        break;
     }
-  }, [demarrerCourse, clientMonte, arriveeDestination, terminerRetour, terminerCourse]);
+  }, [demarrerCourse, clientMonte, arriveeDestination, terminerCourse]);
 
   const handleActionSecondaire = useCallback(() => {
     const currentCourse = courseRef.current;
@@ -59,11 +56,8 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
         terminerCourse(currentCourse.tempsEcoule, currentCourse.revenuEstime);
         arriveeDestination();
         break;
-      case 'RETOUR':
-        nouvelleCourse();
-        break;
     }
-  }, [annulerCourse, arriveeDestination, nouvelleCourse, terminerCourse]);
+  }, [annulerCourse, arriveeDestination, terminerCourse]);
 
   // Initialiser l'écouteur d'événements
   useEffect(() => {

@@ -296,7 +296,6 @@ class WidgetOverlayService : Service() {
                 "REPOS" -> "EN REPOS"
                 "PICKUP" -> "VERS CLIENT"
                 "EN_COURSE" -> "EN COURSE"
-                "RETOUR" -> "RETOUR"
                 else -> etat
             }
             
@@ -323,11 +322,6 @@ class WidgetOverlayService : Service() {
                     btnSecondaire?.text = "TERMINER"
                     btnSecondaire?.visibility = View.VISIBLE
                 }
-                "RETOUR" -> {
-                    btnPrincipal?.text = "TERMINER"
-                    btnSecondaire?.text = "NOUVELLE"
-                    btnSecondaire?.visibility = View.VISIBLE
-                }
             }
             
             // Couleur
@@ -335,7 +329,6 @@ class WidgetOverlayService : Service() {
                 "REPOS" -> 0xE64a4a6a.toInt()
                 "PICKUP" -> 0xE6f39c12.toInt()
                 "EN_COURSE" -> 0xE627ae60.toInt()
-                "RETOUR" -> 0xE63498db.toInt()
                 else -> 0xE64a4a6a.toInt()
             }
             view.setBackgroundColor(couleur)

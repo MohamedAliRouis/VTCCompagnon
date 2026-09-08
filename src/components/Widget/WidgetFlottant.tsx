@@ -27,9 +27,7 @@ export const WidgetFlottant: React.FC<WidgetFlottantProps> = ({ onStatsPress }) 
     demarrerCourse, 
     clientMonte, 
     arriveeDestination, 
-    terminerRetour, 
-    annulerCourse, 
-    nouvelleCourse,
+    annulerCourse,
     majTemps 
   } = useCourseStore();
   const { statsJour, terminerCourse } = useStatsStore();
@@ -95,12 +93,9 @@ export const WidgetFlottant: React.FC<WidgetFlottantProps> = ({ onStatsPress }) 
         clientMonte();
         break;
       case 'EN_COURSE':
-        // Enregistrer les stats avant de passer à RETOUR
+        // Enregistrer les stats et terminer
         terminerCourse(course.tempsEcoule, course.revenuEstime);
         arriveeDestination();
-        break;
-      case 'RETOUR':
-        terminerRetour();
         break;
     }
   };
@@ -114,9 +109,6 @@ export const WidgetFlottant: React.FC<WidgetFlottantProps> = ({ onStatsPress }) 
         // Enregistrer les stats si on termine prématurément
         terminerCourse(course.tempsEcoule, course.revenuEstime);
         arriveeDestination();
-        break;
-      case 'RETOUR':
-        nouvelleCourse();
         break;
     }
   };
