@@ -1,7 +1,7 @@
 # AGENTS.md — VTC Compagnon
 
 ## Project Overview
-React Native 0.87.1 app for VTC (chauffeur) drivers. Single-screen floating widget for tracking course state (REPOS → PICKUP → EN_COURSE → RETOUR), time, and estimated revenue. No backend — all data stored locally via AsyncStorage.
+React Native 0.87.1 Android-first app for VTC drivers. It tracks the manual course flow `REPOS -> PICKUP -> EN_COURSE -> REPOS`, time, and estimated revenue. There is no backend yet.
 
 ## Critical Setup Requirement
 **`android/local.properties` must exist with SDK path** or builds fail:
@@ -25,19 +25,19 @@ This file is gitignored (contains machine-specific path).
 - No test coverage configured yet
 
 ## Architecture Notes
-- **Single file app**: `App.tsx` contains all logic (~730 lines). No navigation, no screens, no components folder.
-- **State**: React hooks only (`useState`, `useEffect`). No Redux/MobX.
-- **Persistence**: AsyncStorage with keys `@vtc_*`. Auto-reset stats at midnight.
-- **Styling**: Inline `StyleSheet.create`, no external theme file.
+- `App.tsx` owns the bottom-tab navigator; screens live in `src/screens/`.
+- Zustand stores in `src/store/` own course, stats, and settings state.
+- AsyncStorage helpers are in `src/utils/storage.ts`; app keys use the `@vtc_*` prefix.
+- The system overlay is native Android code under `android/app/src/main/java/com/vtccompagnon/overlay/` and is manually registered in `MainApplication.kt`.
 
 ## Key Implementation Details
-- **Draggable widget**: Uses `Animated.ValueXY` + `PanResponder` (not a true overlay — renders inside app window).
-- **Course state machine**: 4 states, transitions driven by button taps (not automatic GPS detection).
+- **Two widgets exist**: the in-app React Native widget and a real Android overlay driven by `WidgetOverlayService`.
+- **Course state machine**: 3 states, transitions driven by button taps; there is no automatic GPS detection.
 - **Revenue calculation**: `2.50€ + (0.35€ × minutes)` — configurable in `TARIFS` constant.
-- **Data survival**: Course state saved on app background; restored and time-recalculated on relaunch.
+- **Overlay timing**: the native foreground service calculates elapsed time and revenue so it keeps updating while React Native is backgrounded.
+- **Overlay position**: native `SharedPreferences` persist `WindowManager.LayoutParams.x/y`; do not move this state to AsyncStorage.
 
 ## Known Limitations / Future Work
-- No true system overlay (requires native Android permission + module).
 - No GPS/distance tracking (planned).
 - No cloud backup (planned).
 - iOS configured but not primary target (Android-first for VTC market).

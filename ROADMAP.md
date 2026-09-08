@@ -42,7 +42,7 @@
 | Service Android natif | 📋 | Module Kotlin/Java pour overlay |
 | Communication React Native ↔ Native | 📋 | Bridge pour mise à jour état |
 | Widget réduit (mini mode) | 📋 | Barre compacte avec chrono |
-| Redimensionnement / position | 📋 | Sauvegarde position préférée |
+| Redimensionnement / position | ✅ | Position restaurée et limitée à l'écran |
 
 **Critères d'acceptation** :
 - [ ] Widget visible même si app fermée

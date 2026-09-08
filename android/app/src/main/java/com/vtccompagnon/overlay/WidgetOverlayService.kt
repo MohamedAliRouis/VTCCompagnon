@@ -67,6 +67,12 @@ class WidgetOverlayService : Service() {
         const val EXTRA_TEMPS_DEBUT = "EXTRA_TEMPS_DEBUT"
         const val EXTRA_TARIF_PEC = "EXTRA_TARIF_PEC"
         const val EXTRA_TARIF_MIN = "EXTRA_TARIF_MIN"
+
+        private const val POSITION_PREFERENCES = "widget_overlay_position"
+        private const val POSITION_X = "position_x"
+        private const val POSITION_Y = "position_y"
+        private const val DEFAULT_POSITION_X = 16
+        private const val DEFAULT_POSITION_Y = 100
         
         @Volatile
         var isRunning = false
@@ -173,6 +179,8 @@ class WidgetOverlayService : Service() {
         }
 
         overlayView = LayoutInflater.from(this).inflate(R.layout.widget_overlay, null)
+
+        val preferences = getSharedPreferences(POSITION_PREFERENCES, Context.MODE_PRIVATE)
         
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -189,9 +197,11 @@ class WidgetOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
-            x = 16
-            y = 100
+            x = preferences.getInt(POSITION_X, DEFAULT_POSITION_X)
+            y = preferences.getInt(POSITION_Y, DEFAULT_POSITION_Y)
         }
+
+        constrainPositionToScreen(params)
 
         setupDragListener(params)
         setupButtons()
@@ -218,6 +228,7 @@ class WidgetOverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     params.x = initialX + (initialTouchX - event.rawX).toInt()
                     params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    constrainPositionToScreen(params)
                     try {
                         windowManager?.updateViewLayout(overlayView, params)
                     } catch (e: Exception) {
@@ -225,9 +236,33 @@ class WidgetOverlayService : Service() {
                     }
                     true
                 }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    savePosition(params)
+                    true
+                }
                 else -> false
             }
         }
+    }
+
+    private fun constrainPositionToScreen(params: WindowManager.LayoutParams) {
+        val view = overlayView ?: return
+        view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+
+        val displayMetrics = resources.displayMetrics
+        val maxX = (displayMetrics.widthPixels - view.measuredWidth).coerceAtLeast(0)
+        val maxY = (displayMetrics.heightPixels - view.measuredHeight).coerceAtLeast(0)
+
+        params.x = params.x.coerceIn(0, maxX)
+        params.y = params.y.coerceIn(0, maxY)
+    }
+
+    private fun savePosition(params: WindowManager.LayoutParams) {
+        getSharedPreferences(POSITION_PREFERENCES, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(POSITION_X, params.x)
+            .putInt(POSITION_Y, params.y)
+            .apply()
     }
 
     private fun setupButtons() {
