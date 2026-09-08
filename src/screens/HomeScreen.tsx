@@ -12,7 +12,12 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatsModal } from '../components/Stats';
-import { useCourseStore, useSessionStore, useStatsStore } from '../store';
+import {
+  useCourseStore,
+  useSessionStore,
+  useSettingsStore,
+  useStatsStore,
+} from '../store';
 import { useOverlayControls } from '../hooks';
 import { COULEURS_ETAT, TEXTES_ETAT } from '../constants';
 import { formaterArgent, formaterTemps } from '../utils/formatters';
@@ -93,6 +98,9 @@ export const HomeScreen: React.FC = () => {
   const sessionEtat = useSessionStore(state => state.session.etat);
   const statsJour = useStatsStore(state => state.statsJour);
   const chargerStats = useStatsStore(state => state.chargerStats);
+  const objectifJournalier = useSettingsStore(
+    state => state.settings.objectifJournalier,
+  );
   const commencerService = useSessionStore(state => state.commencerService);
   const mettreEnPause = useSessionStore(state => state.mettreEnPause);
   const reprendreService = useSessionStore(state => state.reprendreService);
@@ -326,6 +334,31 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.statLabel}>Revenus</Text>
           </View>
         </View>
+
+        {objectifJournalier ? (
+          <View style={styles.objectifBloc}>
+            <View style={styles.objectifLigne}>
+              <Text style={styles.objectifLabel}>Objectif du jour</Text>
+              <Text style={styles.objectifValeur}>
+                {formaterArgent(statsJour.revenuTotal)} /{' '}
+                {formaterArgent(objectifJournalier)}
+              </Text>
+            </View>
+            <View style={styles.objectifRail}>
+              <View
+                style={[
+                  styles.objectifJauge,
+                  {
+                    width: `${Math.min(
+                      100,
+                      (statsJour.revenuTotal / objectifJournalier) * 100,
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.overlayCard}>
           <View style={styles.overlayInfo}>
@@ -578,6 +611,37 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: 10,
+  },
+  objectifBloc: {
+    backgroundColor: '#1a1f30',
+    borderRadius: 14,
+    marginTop: 10,
+    padding: 14,
+  },
+  objectifLigne: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  objectifLabel: {
+    color: '#7f879b',
+    fontSize: 12,
+  },
+  objectifValeur: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  objectifRail: {
+    backgroundColor: '#2a3145',
+    borderRadius: 4,
+    height: 8,
+    overflow: 'hidden',
+  },
+  objectifJauge: {
+    backgroundColor: '#65d39a',
+    borderRadius: 4,
+    height: 8,
   },
   statCard: {
     alignItems: 'center',

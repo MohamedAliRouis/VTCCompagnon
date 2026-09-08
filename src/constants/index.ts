@@ -7,10 +7,16 @@ export const CLES_STOCKAGE = {
   STATS_JOUR: '@vtc_stats_jour',
   COURSE_EN_COURS: '@vtc_course_en_cours',
   DATE_DERNIER_RESET: '@vtc_date_reset',
-  HISTORIQUE: '@vtc_historique',
+  HISTORIQUE: '@vtc_historique', // legacy : agrégats journaliers (fallback)
+  COURSES_HISTORIQUE: '@vtc_courses',
+  SESSIONS_HISTORIQUE: '@vtc_sessions',
+  LOG_DEPUIS: '@vtc_log_depuis', // date de bascule vers le journal détaillé
   SETTINGS: '@vtc_settings',
   SESSION_TRAVAIL: '@vtc_session_travail',
 } as const;
+
+// Nombre de jours de journal conservés (courses + sessions).
+export const RETENTION_JOURS = 90;
 
 // Tarifs par défaut (modifiables dans Settings)
 export const TARIFS_DEFAUT: Tarifs = {

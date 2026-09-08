@@ -1,26 +1,46 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView 
+import React, { useMemo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
 } from 'react-native';
-import { useStatsStore, useSettingsStore } from '../../store';
+import { useStatsStore, useSettingsStore, useHistoryStore } from '../../store';
 import { COULEURS } from '../../constants';
 import {
   formaterTemps,
   formaterArgent,
   formaterDate,
+  getDateJour,
 } from '../../utils/formatters';
+import { agregerParJour, ajouterJours } from '../../utils/historique';
 
 interface StatsModalProps {
   onClose: () => void;
 }
 
 export const StatsModal: React.FC<StatsModalProps> = ({ onClose }) => {
-  const { statsJour, historique } = useStatsStore();
+  const { statsJour } = useStatsStore();
   const { settings } = useSettingsStore();
+  const courses = useHistoryStore(s => s.courses);
+  const sessions = useHistoryStore(s => s.sessions);
+  const agregatsLegacy = useHistoryStore(s => s.agregatsLegacy);
+  const logDepuis = useHistoryStore(s => s.logDepuis);
+
+  const jours7 = useMemo(() => {
+    const parJour = agregerParJour(courses, sessions, agregatsLegacy, logDepuis);
+    const fin = getDateJour();
+    const debut = ajouterJours(fin, -6);
+    const liste = [];
+    for (let d = debut; d <= fin; d = ajouterJours(d, 1)) {
+      const j = parJour.get(d);
+      if (j && (j.nbCourses > 0 || j.revenu > 0)) {
+        liste.push(j);
+      }
+    }
+    return liste.reverse();
+  }, [courses, sessions, agregatsLegacy, logDepuis]);
 
   return (
     <View style={styles.overlay}>
@@ -61,14 +81,14 @@ export const StatsModal: React.FC<StatsModalProps> = ({ onClose }) => {
           </View>
 
           {/* Historique */}
-          {historique.length > 0 && (
+          {jours7.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitre}>7 derniers jours</Text>
-              {historique.map(jour => (
+              {jours7.map(jour => (
                 <View key={jour.date} style={styles.ligneHistorique}>
                   <Text style={styles.dateHistorique}>{formaterDate(jour.date)}</Text>
                   <Text style={styles.statsHistorique}>
-                    {jour.nbCourses} courses · {formaterArgent(jour.revenuTotal)}
+                    {jour.nbCourses} courses · {formaterArgent(jour.revenu)}
                   </Text>
                 </View>
               ))}

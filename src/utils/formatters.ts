@@ -22,6 +22,14 @@ export const formaterDate = (isoDate: string): string => {
   return `${jour}/${mois}/${annee}`;
 };
 
+// Formater un timestamp epoch en heure locale 'HH:MM'
+export const formaterHeure = (epoch: number): string => {
+  const d = new Date(epoch);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
 // Obtenir la date du jour (YYYY-MM-DD) dans le fuseau local.
 // toISOString() renverrait la date UTC : une course terminée à 00h30 à Paris
 // serait comptée sur le jour précédent.
