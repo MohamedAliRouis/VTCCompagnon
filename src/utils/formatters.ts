@@ -1,5 +1,3 @@
-import { format } from 'date-fns';
-
 // Formater le temps (MM:SS ou HH:MM:SS)
 export const formaterTemps = (secondes: number): string => {
   const total = Math.max(0, Math.floor(secondes));
@@ -18,17 +16,23 @@ export const formaterArgent = (montant: number): string => {
   return `${montant.toFixed(2).replace('.', ',')} €`;
 };
 
-// Formater une date ISO en JJ/MM/YYYY
-export const formaterDate = (isoString: string): string => {
-  return format(new Date(isoString), 'dd/MM/yyyy');
+// Formater une date 'YYYY-MM-DD' en 'JJ/MM/AAAA'
+export const formaterDate = (isoDate: string): string => {
+  const [annee, mois, jour] = isoDate.split('-');
+  return `${jour}/${mois}/${annee}`;
 };
 
-// Obtenir la date du jour (YYYY-MM-DD)
+// Obtenir la date du jour (YYYY-MM-DD) dans le fuseau local.
+// toISOString() renverrait la date UTC : une course terminée à 00h30 à Paris
+// serait comptée sur le jour précédent.
 export const getDateJour = (): string => {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const mois = String(d.getMonth() + 1).padStart(2, '0');
+  const jour = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mois}-${jour}`;
 };
 
 // Générer un ID unique
 export const genererId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 };

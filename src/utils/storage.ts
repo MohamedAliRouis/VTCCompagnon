@@ -8,6 +8,7 @@ import {
   SessionTravail,
 } from '../types';
 import { TARIFS_DEFAUT } from '../constants';
+import { getDateJour } from './formatters';
 
 // Charger une valeur
 export const charger = async <T>(cle: string): Promise<T | null> => {
@@ -33,7 +34,7 @@ export const sauvegarder = async <T>(cle: string, valeur: T): Promise<boolean> =
 
 // Charger les stats du jour (avec reset si nouveau jour)
 export const chargerStatsJour = async (): Promise<StatsJour> => {
-  const dateJour = new Date().toISOString().split('T')[0];
+  const dateJour = getDateJour();
   const dateStockee = await charger<string>(CLES_STOCKAGE.DATE_DERNIER_RESET);
   
   if (dateStockee !== dateJour) {
@@ -105,7 +106,6 @@ export const chargerSettings = async (): Promise<Settings> => {
   const settings = await charger<Settings>(CLES_STOCKAGE.SETTINGS);
   return settings || {
     tarifs: TARIFS_DEFAUT,
-    theme: 'dark',
     notifications: true,
   };
 };

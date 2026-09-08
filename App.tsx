@@ -10,10 +10,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HomeScreen, HistoryScreen, SettingsScreen } from './src/screens';
 import {
+  useBootstrap,
   useCourseTimer,
   useSessionTimer,
   useWidgetOverlayBridge,
 } from './src/hooks';
+import { COULEURS } from './src/constants';
 
 const Tab = createBottomTabNavigator();
 
@@ -23,6 +25,7 @@ const HistoriqueIcon = () => <Text style={styles.icon}>📊</Text>;
 const ReglagesIcon = () => <Text style={styles.icon}>⚙️</Text>;
 
 function App() {
+  useBootstrap();
   useCourseTimer();
   useSessionTimer();
   useWidgetOverlayBridge();
@@ -35,11 +38,11 @@ function App() {
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: '#1a1a2e',
-              borderTopColor: 'rgba(255,255,255,0.1)',
+              backgroundColor: COULEURS.carte,
+              borderTopColor: COULEURS.carteBordure,
             },
-            tabBarActiveTintColor: '#3498db',
-            tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+            tabBarActiveTintColor: COULEURS.accent,
+            tabBarInactiveTintColor: COULEURS.texteFaible,
           }}
         >
           <Tab.Screen
