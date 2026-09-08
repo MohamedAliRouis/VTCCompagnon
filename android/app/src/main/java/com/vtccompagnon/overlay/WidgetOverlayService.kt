@@ -23,6 +23,7 @@ import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.vtccompagnon.R
 import com.vtccompagnon.MainActivity
+import java.util.Locale
 
 class WidgetOverlayService : Service() {
 
@@ -432,13 +433,14 @@ class WidgetOverlayService : Service() {
         val s = secondes % 60
         
         return if (h > 0) {
-            String.format("%02d:%02d:%02d", h, m, s)
+            String.format(Locale.FRANCE, "%02d:%02d:%02d", h, m, s)
         } else {
-            String.format("%02d:%02d", m, s)
+            String.format(Locale.FRANCE, "%02d:%02d", m, s)
         }
     }
 
     private fun formatArgent(montant: Double): String {
-        return String.format("%.2f €", montant).replace(".", ",")
+        // Locale.FRANCE : séparateur décimal virgule, pas besoin de replace().
+        return String.format(Locale.FRANCE, "%.2f €", montant)
     }
 }

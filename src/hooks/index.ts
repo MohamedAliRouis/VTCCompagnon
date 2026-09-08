@@ -1,4 +1,5 @@
 // Export des hooks
-export { useWidgetOverlay } from './useWidgetOverlay';
+export { useOverlayControls } from './useOverlayControls';
+export { useWidgetOverlayBridge } from './useWidgetOverlayBridge';
 export { useCourseTimer } from './useCourseTimer';
 export { useSessionTimer } from './useSessionTimer';
