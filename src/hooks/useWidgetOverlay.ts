@@ -9,6 +9,18 @@ import {
 
 const { WidgetOverlay } = NativeModules;
 
+// Temps écoulé (s) + revenu estimé d'une course à partir de son timestamp de début.
+const calcTempsEtRevenu = (
+  tempsDebut: number | null,
+  priseEnCharge: number,
+  parMinute: number,
+): [tempsEcoule: number, revenu: number] => {
+  const tempsEcoule = tempsDebut
+    ? Math.floor((Date.now() - tempsDebut) / 1000)
+    : 0;
+  return [tempsEcoule, priseEnCharge + (tempsEcoule / 60) * parMinute];
+};
+
 interface UseWidgetOverlayReturn {
   isSupported: boolean;
   checkPermission: () => Promise<boolean>;
@@ -19,61 +31,82 @@ interface UseWidgetOverlayReturn {
   isRunning: () => Promise<boolean>;
 }
 
-export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverlayReturn => {
-  const { course, demarrerCourse, clientMonte, arriveeDestination, annulerCourse } = useCourseStore();
-  const { terminerCourse } = useStatsStore();
-  const { settings } = useSettingsStore();
-  const {
-    session,
-    commencerService,
-    mettreEnPause,
-    reprendreService,
-  } = useSessionStore();
-  
+export const useWidgetOverlay = (
+  connectToNativeEvents = false,
+): UseWidgetOverlayReturn => {
+  // Actions : références stables Zustand, ne provoquent aucun re-render.
+  const demarrerCourse = useCourseStore(s => s.demarrerCourse);
+  const clientMonte = useCourseStore(s => s.clientMonte);
+  const arriveeDestination = useCourseStore(s => s.arriveeDestination);
+  const annulerCourse = useCourseStore(s => s.annulerCourse);
+  const terminerCourse = useStatsStore(s => s.terminerCourse);
+  const commencerService = useSessionStore(s => s.commencerService);
+  const mettreEnPause = useSessionStore(s => s.mettreEnPause);
+  const reprendreService = useSessionStore(s => s.reprendreService);
+
+  // État : sélecteurs fins. Ce hook est monté dans App ; on ne lit que les
+  // champs qui déclenchent une transition (jamais tempsEcoule / tempsServiceEcoule
+  // qui changent chaque seconde), pour ne pas re-render tout le navigateur.
+  const courseEtat = useCourseStore(s => s.course.etat);
+  const courseTempsDebut = useCourseStore(s => s.course.tempsDebut);
+  const sessionEtat = useSessionStore(s => s.session.etat);
+  const tempsDebutService = useSessionStore(s => s.session.tempsDebutService);
+  const tempsDebutPause = useSessionStore(s => s.session.tempsDebutPause);
+  const tempsPauseCumule = useSessionStore(s => s.session.tempsPauseCumule);
+  const tarifPriseEnCharge = useSettingsStore(
+    s => s.settings.tarifs.priseEnCharge,
+  );
+  const tarifParMinute = useSettingsStore(s => s.settings.tarifs.parMinute);
+
   const isSupported = Platform.OS === 'android';
   const eventEmitter = useRef<NativeEventEmitter | null>(null);
-  
-  // Références stables pour les callbacks
-  const courseRef = useRef(course);
-  courseRef.current = course;
-  
-  const settingsRef = useRef(settings);
-  settingsRef.current = settings;
 
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
+  // Snapshot lu par les callbacks natifs : évite de recréer les listeners
+  // (et donc de réabonner le NativeEventEmitter) à chaque changement d'état.
+  const stateRef = useRef({
+    courseEtat,
+    courseTempsDebut,
+    sessionEtat,
+    tarifPriseEnCharge,
+    tarifParMinute,
+  });
+  stateRef.current = {
+    courseEtat,
+    courseTempsDebut,
+    sessionEtat,
+    tarifPriseEnCharge,
+    tarifParMinute,
+  };
 
   // Actions du widget
   const handleActionPrincipale = useCallback(() => {
-    const currentCourse = courseRef.current;
-    const currentSession = sessionRef.current;
+    const { sessionEtat: sEtat, courseEtat: cEtat, courseTempsDebut: cDebut } =
+      stateRef.current;
 
-    if (currentSession.etat === 'HORS_SERVICE') {
+    if (sEtat === 'HORS_SERVICE') {
       commencerService();
       return;
     }
 
-    if (currentSession.etat === 'EN_PAUSE') {
+    if (sEtat === 'EN_PAUSE') {
       reprendreService();
       return;
     }
 
-    switch (currentCourse.etat) {
+    switch (cEtat) {
       case 'REPOS':
         demarrerCourse();
         break;
       case 'PICKUP':
         clientMonte();
         break;
-      case 'EN_COURSE':
-        const tempsEcoule = currentCourse.tempsDebut
-          ? Math.floor((Date.now() - currentCourse.tempsDebut) / 1000)
-          : currentCourse.tempsEcoule;
-        const tarifs = settingsRef.current.tarifs;
-        const revenu = tarifs.priseEnCharge + (tempsEcoule / 60) * tarifs.parMinute;
+      case 'EN_COURSE': {
+        const { tarifPriseEnCharge: pec, tarifParMinute: min } = stateRef.current;
+        const [tempsEcoule, revenu] = calcTempsEtRevenu(cDebut, pec, min);
         terminerCourse(tempsEcoule, revenu);
         arriveeDestination();
         break;
+      }
     }
   }, [
     arriveeDestination,
@@ -85,47 +118,46 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
   ]);
 
   const handleActionSecondaire = useCallback(() => {
-    const currentCourse = courseRef.current;
+    const { sessionEtat: sEtat, courseEtat: cEtat, courseTempsDebut: cDebut } =
+      stateRef.current;
 
-    if (sessionRef.current.etat !== 'EN_SERVICE') {
+    if (sEtat !== 'EN_SERVICE') {
       return;
     }
 
-    switch (currentCourse.etat) {
+    switch (cEtat) {
       case 'REPOS':
         mettreEnPause();
         break;
       case 'PICKUP':
         annulerCourse();
         break;
-      case 'EN_COURSE':
-        const tempsEcoule = currentCourse.tempsDebut
-          ? Math.floor((Date.now() - currentCourse.tempsDebut) / 1000)
-          : currentCourse.tempsEcoule;
-        const tarifs = settingsRef.current.tarifs;
-        const revenu = tarifs.priseEnCharge + (tempsEcoule / 60) * tarifs.parMinute;
+      case 'EN_COURSE': {
+        const { tarifPriseEnCharge: pec, tarifParMinute: min } = stateRef.current;
+        const [tempsEcoule, revenu] = calcTempsEtRevenu(cDebut, pec, min);
         terminerCourse(tempsEcoule, revenu);
         arriveeDestination();
         break;
+      }
     }
   }, [annulerCourse, arriveeDestination, mettreEnPause, terminerCourse]);
 
   // Initialiser l'écouteur d'événements
   useEffect(() => {
     if (!isSupported || !connectToNativeEvents) return;
-    
+
     eventEmitter.current = new NativeEventEmitter(WidgetOverlay);
-    
+
     const subscriptionPrincipale = eventEmitter.current.addListener(
       'WidgetActionPrincipale',
-      handleActionPrincipale
+      handleActionPrincipale,
     );
-    
+
     const subscriptionSecondaire = eventEmitter.current.addListener(
       'WidgetActionSecondaire',
-      handleActionSecondaire
+      handleActionSecondaire,
     );
-    
+
     return () => {
       subscriptionPrincipale.remove();
       subscriptionSecondaire.remove();
@@ -186,28 +218,28 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
     if (!isSupported) return;
     try {
       await WidgetOverlay.updateOverlay(
-        course.etat,
-        course.tempsDebut || 0,  // timestamp de début, pas temps écoulé
-        settings.tarifs.priseEnCharge,
-        settings.tarifs.parMinute,
-        session.etat,
-        session.tempsDebutService || 0,
-        session.tempsDebutPause || 0,
-        session.tempsPauseCumule,
+        courseEtat,
+        courseTempsDebut || 0, // timestamp de début, pas temps écoulé
+        tarifPriseEnCharge,
+        tarifParMinute,
+        sessionEtat,
+        tempsDebutService || 0,
+        tempsDebutPause || 0,
+        tempsPauseCumule,
       );
     } catch (e) {
       console.error('Erreur updateOverlay:', e);
     }
   }, [
     isSupported,
-    course.etat,
-    course.tempsDebut,
-    settings.tarifs.priseEnCharge,
-    settings.tarifs.parMinute,
-    session.etat,
-    session.tempsDebutService,
-    session.tempsDebutPause,
-    session.tempsPauseCumule,
+    courseEtat,
+    courseTempsDebut,
+    tarifPriseEnCharge,
+    tarifParMinute,
+    sessionEtat,
+    tempsDebutService,
+    tempsDebutPause,
+    tempsPauseCumule,
   ]);
 
   // Vérifier si l'overlay est en cours d'exécution
@@ -224,24 +256,13 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
   // Mettre à jour l'overlay quand l'état change
   useEffect(() => {
     const syncRunningOverlay = async () => {
-      if (isSupported && connectToNativeEvents && await isRunning()) {
+      if (isSupported && connectToNativeEvents && (await isRunning())) {
         await updateOverlay();
       }
     };
 
     syncRunningOverlay();
-  }, [
-    connectToNativeEvents,
-    isSupported,
-    course.etat,
-    course.tempsDebut,
-    session.etat,
-    session.tempsDebutService,
-    session.tempsDebutPause,
-    session.tempsPauseCumule,
-    isRunning,
-    updateOverlay,
-  ]);
+  }, [connectToNativeEvents, isSupported, isRunning, updateOverlay]);
 
   return {
     isSupported,
