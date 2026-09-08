@@ -9,6 +9,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HomeScreen, HistoryScreen, SettingsScreen } from './src/screens';
+import {
+  useCourseTimer,
+  useSessionTimer,
+  useWidgetOverlay,
+} from './src/hooks';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,6 +23,10 @@ const HistoriqueIcon = () => <Text style={styles.icon}>📊</Text>;
 const ReglagesIcon = () => <Text style={styles.icon}>⚙️</Text>;
 
 function App() {
+  useCourseTimer();
+  useSessionTimer();
+  useWidgetOverlay(true);
+
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" />

@@ -13,7 +13,6 @@ import { useSettingsStore } from '../store';
 
 export const SettingsScreen: React.FC = () => {
   const { settings, setTarifs, setTheme, setNotifications } = useSettingsStore();
-  
   const [priseEnCharge, setPriseEnCharge] = React.useState(
     settings.tarifs.priseEnCharge.toString()
   );

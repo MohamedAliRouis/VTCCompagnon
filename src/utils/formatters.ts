@@ -2,9 +2,10 @@ import { format } from 'date-fns';
 
 // Formater le temps (MM:SS ou HH:MM:SS)
 export const formaterTemps = (secondes: number): string => {
-  const h = Math.floor(secondes / 3600);
-  const m = Math.floor((secondes % 3600) / 60);
-  const s = secondes % 60;
+  const total = Math.max(0, Math.floor(secondes));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
   
   if (h > 0) {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;

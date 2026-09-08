@@ -12,7 +12,9 @@ Application mobile compagnon pour chauffeurs VTC. Suivi de courses, calcul de re
 
 | Feature | Description |
 |---------|-------------|
-| **Widget flottant** | Suivi de course draggable avec 4 états (Repos → Pickup → En course → Retour) |
+| **Widget flottant Android** | Overlay déplaçable avec 3 états (Repos → Pickup → En course → Repos) |
+| **Tableau de bord** | État de la course, activité du jour et contrôle du widget |
+| **Session de travail** | Début et fin de service, temps travaillé et pauses |
 | **Chronomètre** | Temps écoulé en temps réel |
 | **Calcul revenus** | Estimation basée sur tarifs personnalisables (prise en charge + €/min) |
 | **Statistiques** | Courses du jour, historique 7 jours, moyennes |
@@ -63,14 +65,14 @@ npm run android
 ```
 src/
 ├── components/
-│   ├── Widget/           # Widget flottant (Badge, Chrono, Actions)
 │   └── Stats/            # Modal statistiques
 ├── screens/
-│   ├── HomeScreen.tsx    # Accueil avec widget
+│   ├── HomeScreen.tsx    # Tableau de bord
 │   ├── HistoryScreen.tsx # Historique détaillé
 │   └── SettingsScreen.tsx# Réglages
 ├── store/                # Zustand (state management)
 │   ├── courseStore.ts    # État course active
+│   ├── sessionStore.ts   # Service, pauses et temps travaillé
 │   ├── statsStore.ts     # Statistiques jour + historique
 │   └── settingsStore.ts  # Préférences utilisateur
 ├── types/                # Types TypeScript
@@ -78,22 +80,33 @@ src/
 │   ├── formatters.ts     # formatTemps, formatArgent, dates
 │   └── storage.ts        # Helpers AsyncStorage
 └── constants/            # Tarifs, clés storage, couleurs
+
+android/app/src/main/java/com/vtccompagnon/overlay/
+├── WidgetOverlayService.kt  # Overlay, chronomètre et position
+├── WidgetOverlayModule.kt   # Bridge React Native
+└── WidgetActionReceiver.kt  # Actions des boutons natifs
 ```
 
 ---
 
 ## Utilisation
 
-### Widget (Accueil)
+### Accueil
+
+Le tableau de bord permet de commencer ou terminer son service, prendre une pause, consulter l’état de la course et les statistiques du jour, puis afficher ou masquer le widget Android. Les actions de course sont volontairement réservées au widget flottant pour éviter une interface en double.
+
+### Widget flottant
 
 | État | Action | Résultat |
 |------|--------|----------|
-| 🟣 **Repos** | ▶ DÉMARRER | Passe à Pickup |
+| **Hors service** | COMMENCER | Démarre la session de travail |
+| **En service** | DÉMARRER COURSE | Passe à Pickup |
+| **En service** | PAUSE | Suspend le compteur de travail |
+| **En pause** | REPRENDRE | Reprend le service |
 | 🟠 **Pickup** | CLIENT MONTÉ | Passe à En course |
-| 🟢 **En course** | ARRIVÉE | Enregistre stats → Retour |
-| 🔵 **Retour** | TERMINER | Retour Repos |
+| 🟢 **En course** | ARRIVÉE | Enregistre les stats et revient au repos |
 
-**Appui long** sur le widget ou tap sur "Aujourd'hui" → Modal statistiques détaillées.
+Sa position est sauvegardée automatiquement. Le chronomètre natif continue de fonctionner lorsque l’application est en arrière-plan.
 
 ### Historique
 

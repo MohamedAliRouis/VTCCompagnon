@@ -24,8 +24,9 @@
 |---------|--------|-------|
 | Structure projet React Native | ✅ | TypeScript, ESLint, Prettier |
 | Navigation bottom tabs | ✅ | Accueil / Historique / Réglages |
-| State management Zustand | ✅ | 3 stores : course, stats, settings |
-| Widget flottant basique | ✅ | 4 états, draggable, chronomètre |
+| State management Zustand | ✅ | 4 stores : course, session, stats, settings |
+| Widget flottant Android | ✅ | 3 états, déplaçable, chronomètre natif |
+| Tableau de bord | ✅ | État actuel, activité du jour, contrôle de l'overlay |
 | Persistance AsyncStorage | ✅ | Sauvegarde locale, reset minuit |
 | Écrans Historique + Réglages | ✅ | Stats 7 jours, tarifs modifiables |
 
@@ -38,15 +39,15 @@
 
 | Tâche | Statut | Détails |
 |-------|--------|---------|
-| Permission `SYSTEM_ALERT_WINDOW` | 📋 | Demande utilisateur au premier lancement |
-| Service Android natif | 📋 | Module Kotlin/Java pour overlay |
-| Communication React Native ↔ Native | 📋 | Bridge pour mise à jour état |
+| Permission `SYSTEM_ALERT_WINDOW` | ✅ | Demande utilisateur depuis le tableau de bord |
+| Service Android natif | ✅ | Service Kotlin au premier plan |
+| Communication React Native ↔ Native | ✅ | État et actions synchronisés dans les deux sens |
 | Widget réduit (mini mode) | 📋 | Barre compacte avec chrono |
-| Redimensionnement / position | 📋 | Sauvegarde position préférée |
+| Redimensionnement / position | ✅ | Position restaurée et limitée à l'écran |
 
 **Critères d'acceptation** :
 - [ ] Widget visible même si app fermée
-- [ ] Boutons fonctionnels dans l'overlay
+- [x] Boutons fonctionnels dans l'overlay
 - [ ] Pas de fuite mémoire sur longue durée
 
 ---
@@ -56,7 +57,8 @@
 
 | Tâche | Statut | Détails |
 |-------|--------|---------|
-| Timer de conduite continue | 📋 | Détecte temps écoulé depuis dernière pause |
+| Session de travail persistante | ✅ | Début, fin, pause et reprise |
+| Timer de conduite continue | ✅ | Temps de service hors pauses |
 | Notification "Prenez une pause" | 📋 | Après X heures (configurable) |
 | Historique des pauses | 📋 | Enregistre temps de repos |
 | Statistiques bien-être | 📋 | Temps de conduite vs pause par jour |
