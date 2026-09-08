@@ -10,78 +10,15 @@ import {
   Alert
 } from 'react-native';
 import { useSettingsStore } from '../store';
-import { useWidgetOverlay } from '../hooks/useWidgetOverlay';
 
 export const SettingsScreen: React.FC = () => {
   const { settings, setTarifs, setTheme, setNotifications } = useSettingsStore();
-  const { 
-    isSupported, 
-    checkPermission, 
-    requestPermission, 
-    showOverlay, 
-    hideOverlay,
-    isRunning 
-  } = useWidgetOverlay();
-  
-  const [overlayActif, setOverlayActif] = React.useState(false);
   const [priseEnCharge, setPriseEnCharge] = React.useState(
     settings.tarifs.priseEnCharge.toString()
   );
   const [parMinute, setParMinute] = React.useState(
     settings.tarifs.parMinute.toString()
   );
-
-  // Vérifier l'état de l'overlay au chargement
-  React.useEffect(() => {
-    const verifierOverlay = async () => {
-      if (isSupported) {
-        const running = await isRunning();
-        setOverlayActif(running);
-      }
-    };
-    verifierOverlay();
-  }, [isSupported, isRunning]);
-
-  const toggleOverlay = async (value: boolean) => {
-    if (!isSupported) {
-      Alert.alert('Non supporté', 'L\'overlay n\'est disponible que sur Android');
-      return;
-    }
-
-    if (value) {
-      // Activer
-      const hasPermission = await checkPermission();
-      if (!hasPermission) {
-        Alert.alert(
-          'Permission requise',
-          'VTC Compagnon a besoin de la permission "Afficher par-dessus les autres applications" pour afficher le widget.',
-          [
-            { text: 'Annuler', style: 'cancel' },
-            { 
-              text: 'Autoriser', 
-              onPress: async () => {
-                await requestPermission();
-                // L'utilisateur devra revenir activer le toggle après avoir accordé la permission
-              }
-            }
-          ]
-        );
-        return;
-      }
-      
-      const success = await showOverlay();
-      if (success) {
-        setOverlayActif(true);
-        Alert.alert('Succès', 'Widget overlay activé !');
-      } else {
-        Alert.alert('Erreur', 'Impossible d\'activer le widget');
-      }
-    } else {
-      // Désactiver
-      await hideOverlay();
-      setOverlayActif(false);
-    }
-  };
 
   const sauvegarderTarifs = () => {
     const pec = parseFloat(priseEnCharge.replace(',', '.'));
@@ -104,33 +41,6 @@ export const SettingsScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.titre}>⚙️ Paramètres</Text>
-
-      {/* Widget Overlay */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>Widget flottant</Text>
-        
-        <View style={styles.option}>
-          <View style={styles.optionTexte}>
-            <Text style={styles.labelOption}>Widget overlay</Text>
-            <Text style={styles.descriptionOption}>
-              Affiche le widget par-dessus les autres applications
-            </Text>
-          </View>
-          <Switch
-            value={overlayActif}
-            onValueChange={toggleOverlay}
-            trackColor={{ false: '#767577', true: '#3498db' }}
-            thumbColor={overlayActif ? '#fff' : '#f4f3f4'}
-            disabled={!isSupported}
-          />
-        </View>
-        
-        {!isSupported && (
-          <Text style={styles.noteOption}>
-            ⚠️ Disponible uniquement sur Android
-          </Text>
-        )}
-      </View>
 
       {/* Tarifs */}
       <View style={styles.section}>
@@ -260,24 +170,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
   },
-  optionTexte: {
-    flex: 1,
-    marginRight: 12,
-  },
   labelOption: {
     fontSize: 14,
     color: '#fff',
-  },
-  descriptionOption: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 2,
-  },
-  noteOption: {
-    fontSize: 11,
-    color: '#f39c12',
-    marginTop: 8,
-    fontStyle: 'italic',
   },
   carte: {
     backgroundColor: 'rgba(255,255,255,0.05)',

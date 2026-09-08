@@ -14,7 +14,7 @@ interface UseWidgetOverlayReturn {
   isRunning: () => Promise<boolean>;
 }
 
-export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
+export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverlayReturn => {
   const { course, demarrerCourse, clientMonte, arriveeDestination, annulerCourse } = useCourseStore();
   const { terminerCourse } = useStatsStore();
   const { settings } = useSettingsStore();
@@ -40,7 +40,12 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
         clientMonte();
         break;
       case 'EN_COURSE':
-        terminerCourse(currentCourse.tempsEcoule, currentCourse.revenuEstime);
+        const tempsEcoule = currentCourse.tempsDebut
+          ? Math.floor((Date.now() - currentCourse.tempsDebut) / 1000)
+          : currentCourse.tempsEcoule;
+        const tarifs = settingsRef.current.tarifs;
+        const revenu = tarifs.priseEnCharge + (tempsEcoule / 60) * tarifs.parMinute;
+        terminerCourse(tempsEcoule, revenu);
         arriveeDestination();
         break;
     }
@@ -53,7 +58,12 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
         annulerCourse();
         break;
       case 'EN_COURSE':
-        terminerCourse(currentCourse.tempsEcoule, currentCourse.revenuEstime);
+        const tempsEcoule = currentCourse.tempsDebut
+          ? Math.floor((Date.now() - currentCourse.tempsDebut) / 1000)
+          : currentCourse.tempsEcoule;
+        const tarifs = settingsRef.current.tarifs;
+        const revenu = tarifs.priseEnCharge + (tempsEcoule / 60) * tarifs.parMinute;
+        terminerCourse(tempsEcoule, revenu);
         arriveeDestination();
         break;
     }
@@ -61,7 +71,7 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
 
   // Initialiser l'écouteur d'événements
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isSupported || !connectToNativeEvents) return;
     
     eventEmitter.current = new NativeEventEmitter(WidgetOverlay);
     
@@ -79,7 +89,12 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
       subscriptionPrincipale.remove();
       subscriptionSecondaire.remove();
     };
-  }, [isSupported, handleActionPrincipale, handleActionSecondaire]);
+  }, [
+    connectToNativeEvents,
+    isSupported,
+    handleActionPrincipale,
+    handleActionSecondaire,
+  ]);
 
   // Vérifier la permission
   const checkPermission = useCallback(async (): Promise<boolean> => {
@@ -154,10 +169,21 @@ export const useWidgetOverlay = (): UseWidgetOverlayReturn => {
 
   // Mettre à jour l'overlay quand l'état change
   useEffect(() => {
-    if (isSupported) {
-      updateOverlay();
-    }
-  }, [isSupported, course.etat, course.tempsDebut, updateOverlay]);
+    const syncRunningOverlay = async () => {
+      if (isSupported && connectToNativeEvents && await isRunning()) {
+        await updateOverlay();
+      }
+    };
+
+    syncRunningOverlay();
+  }, [
+    connectToNativeEvents,
+    isSupported,
+    course.etat,
+    course.tempsDebut,
+    isRunning,
+    updateOverlay,
+  ]);
 
   return {
     isSupported,

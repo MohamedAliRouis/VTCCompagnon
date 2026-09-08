@@ -88,9 +88,17 @@ class WidgetOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_HIDE) {
+            stopChrono()
+            hideOverlay()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            isRunning = false
+            return START_NOT_STICKY
+        }
+
         when (intent?.action) {
             ACTION_SHOW -> showOverlay()
-            ACTION_HIDE -> hideOverlay()
             ACTION_UPDATE -> {
                 etatActuel = intent.getStringExtra(EXTRA_ETAT) ?: "REPOS"
                 tempsDebut = intent.getLongExtra(EXTRA_TEMPS_DEBUT, 0)

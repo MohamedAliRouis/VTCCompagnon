@@ -25,7 +25,8 @@
 | Structure projet React Native | ✅ | TypeScript, ESLint, Prettier |
 | Navigation bottom tabs | ✅ | Accueil / Historique / Réglages |
 | State management Zustand | ✅ | 3 stores : course, stats, settings |
-| Widget flottant basique | ✅ | 4 états, draggable, chronomètre |
+| Widget flottant Android | ✅ | 3 états, déplaçable, chronomètre natif |
+| Tableau de bord | ✅ | État actuel, activité du jour, contrôle de l'overlay |
 | Persistance AsyncStorage | ✅ | Sauvegarde locale, reset minuit |
 | Écrans Historique + Réglages | ✅ | Stats 7 jours, tarifs modifiables |
 

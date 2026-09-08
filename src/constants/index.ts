@@ -29,15 +29,3 @@ export const TEXTES_ETAT: Record<string, string> = {
   PICKUP: 'VERS CLIENT',
   EN_COURSE: 'EN COURSE',
 };
-
-// Textes boutons
-export const TEXTES_BOUTON_PRINCIPAL: Record<string, string> = {
-  REPOS: '▶ DÉMARRER',
-  PICKUP: 'CLIENT MONTÉ',
-  EN_COURSE: 'ARRIVÉE',
-};
-
-export const TEXTES_BOUTON_SECONDAIRE: Record<string, string> = {
-  PICKUP: 'ANNULER',
-  EN_COURSE: 'TERMINER',
-};

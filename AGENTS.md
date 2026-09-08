@@ -31,10 +31,11 @@ This file is gitignored (contains machine-specific path).
 - The system overlay is native Android code under `android/app/src/main/java/com/vtccompagnon/overlay/` and is manually registered in `MainApplication.kt`.
 
 ## Key Implementation Details
-- **Two widgets exist**: the in-app React Native widget and a real Android overlay driven by `WidgetOverlayService`.
+- **The native overlay is the only course control UI**; `HomeScreen` is a read-only dashboard plus overlay show/hide control. Do not reintroduce duplicate course buttons on the home screen.
 - **Course state machine**: 3 states, transitions driven by button taps; there is no automatic GPS detection.
 - **Revenue calculation**: `2.50€ + (0.35€ × minutes)` — configurable in `TARIFS` constant.
 - **Overlay timing**: the native foreground service calculates elapsed time and revenue so it keeps updating while React Native is backgrounded.
+- **Global wiring**: `App.tsx` must mount `useCourseTimer()` and `useWidgetOverlay(true)`; screen-level calls use `useWidgetOverlay()` without native event listeners.
 - **Overlay position**: native `SharedPreferences` persist `WindowManager.LayoutParams.x/y`; do not move this state to AsyncStorage.
 
 ## Known Limitations / Future Work
