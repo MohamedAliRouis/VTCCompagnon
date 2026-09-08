@@ -1,6 +1,11 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { NativeModules, Platform, NativeEventEmitter } from 'react-native';
-import { useCourseStore, useStatsStore, useSettingsStore } from '../store';
+import {
+  useCourseStore,
+  useSessionStore,
+  useStatsStore,
+  useSettingsStore,
+} from '../store';
 
 const { WidgetOverlay } = NativeModules;
 
@@ -18,6 +23,12 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
   const { course, demarrerCourse, clientMonte, arriveeDestination, annulerCourse } = useCourseStore();
   const { terminerCourse } = useStatsStore();
   const { settings } = useSettingsStore();
+  const {
+    session,
+    commencerService,
+    mettreEnPause,
+    reprendreService,
+  } = useSessionStore();
   
   const isSupported = Platform.OS === 'android';
   const eventEmitter = useRef<NativeEventEmitter | null>(null);
@@ -29,9 +40,24 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
   // Actions du widget
   const handleActionPrincipale = useCallback(() => {
     const currentCourse = courseRef.current;
+    const currentSession = sessionRef.current;
+
+    if (currentSession.etat === 'HORS_SERVICE') {
+      commencerService();
+      return;
+    }
+
+    if (currentSession.etat === 'EN_PAUSE') {
+      reprendreService();
+      return;
+    }
+
     switch (currentCourse.etat) {
       case 'REPOS':
         demarrerCourse();
@@ -49,11 +75,26 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
         arriveeDestination();
         break;
     }
-  }, [demarrerCourse, clientMonte, arriveeDestination, terminerCourse]);
+  }, [
+    arriveeDestination,
+    clientMonte,
+    commencerService,
+    demarrerCourse,
+    reprendreService,
+    terminerCourse,
+  ]);
 
   const handleActionSecondaire = useCallback(() => {
     const currentCourse = courseRef.current;
+
+    if (sessionRef.current.etat !== 'EN_SERVICE') {
+      return;
+    }
+
     switch (currentCourse.etat) {
+      case 'REPOS':
+        mettreEnPause();
+        break;
       case 'PICKUP':
         annulerCourse();
         break;
@@ -67,7 +108,7 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
         arriveeDestination();
         break;
     }
-  }, [annulerCourse, arriveeDestination, terminerCourse]);
+  }, [annulerCourse, arriveeDestination, mettreEnPause, terminerCourse]);
 
   // Initialiser l'écouteur d'événements
   useEffect(() => {
@@ -144,17 +185,30 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
   const updateOverlay = useCallback(async () => {
     if (!isSupported) return;
     try {
-      const currentSettings = settingsRef.current;
       await WidgetOverlay.updateOverlay(
         course.etat,
         course.tempsDebut || 0,  // timestamp de début, pas temps écoulé
-        currentSettings.tarifs.priseEnCharge,
-        currentSettings.tarifs.parMinute
+        settings.tarifs.priseEnCharge,
+        settings.tarifs.parMinute,
+        session.etat,
+        session.tempsDebutService || 0,
+        session.tempsDebutPause || 0,
+        session.tempsPauseCumule,
       );
     } catch (e) {
       console.error('Erreur updateOverlay:', e);
     }
-  }, [isSupported, course.etat, course.tempsDebut]);
+  }, [
+    isSupported,
+    course.etat,
+    course.tempsDebut,
+    settings.tarifs.priseEnCharge,
+    settings.tarifs.parMinute,
+    session.etat,
+    session.tempsDebutService,
+    session.tempsDebutPause,
+    session.tempsPauseCumule,
+  ]);
 
   // Vérifier si l'overlay est en cours d'exécution
   const isRunning = useCallback(async (): Promise<boolean> => {
@@ -181,6 +235,10 @@ export const useWidgetOverlay = (connectToNativeEvents = false): UseWidgetOverla
     isSupported,
     course.etat,
     course.tempsDebut,
+    session.etat,
+    session.tempsDebutService,
+    session.tempsDebutPause,
+    session.tempsPauseCumule,
     isRunning,
     updateOverlay,
   ]);

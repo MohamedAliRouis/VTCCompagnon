@@ -40,17 +40,15 @@ class WidgetOverlayService : Service() {
     private var etatActuel: String = "REPOS"
     private var tarifPriseEnCharge: Double = 2.50
     private var tarifParMinute: Double = 0.35
+    private var etatSession: String = "HORS_SERVICE"
+    private var tempsDebutService: Long = 0
+    private var tempsDebutPause: Long = 0
+    private var tempsPauseCumule: Long = 0
     
     private val handler = Handler(Looper.getMainLooper())
     private val chronoRunnable = object : Runnable {
         override fun run() {
-            if (etatActuel != "REPOS" && tempsDebut > 0) {
-                val tempsEcoule = (System.currentTimeMillis() - tempsDebut) / 1000
-                val minutes = tempsEcoule / 60.0
-                val revenu = tarifPriseEnCharge + (minutes * tarifParMinute)
-                
-                updateUI(etatActuel, tempsEcoule, revenu)
-            }
+            updateUI()
             handler.postDelayed(this, 1000)
         }
     }
@@ -67,6 +65,10 @@ class WidgetOverlayService : Service() {
         const val EXTRA_TEMPS_DEBUT = "EXTRA_TEMPS_DEBUT"
         const val EXTRA_TARIF_PEC = "EXTRA_TARIF_PEC"
         const val EXTRA_TARIF_MIN = "EXTRA_TARIF_MIN"
+        const val EXTRA_ETAT_SESSION = "EXTRA_ETAT_SESSION"
+        const val EXTRA_TEMPS_DEBUT_SERVICE = "EXTRA_TEMPS_DEBUT_SERVICE"
+        const val EXTRA_TEMPS_DEBUT_PAUSE = "EXTRA_TEMPS_DEBUT_PAUSE"
+        const val EXTRA_TEMPS_PAUSE_CUMULE = "EXTRA_TEMPS_PAUSE_CUMULE"
 
         private const val POSITION_PREFERENCES = "widget_overlay_position"
         private const val POSITION_X = "position_x"
@@ -104,19 +106,20 @@ class WidgetOverlayService : Service() {
                 tempsDebut = intent.getLongExtra(EXTRA_TEMPS_DEBUT, 0)
                 tarifPriseEnCharge = intent.getDoubleExtra(EXTRA_TARIF_PEC, 2.50)
                 tarifParMinute = intent.getDoubleExtra(EXTRA_TARIF_MIN, 0.35)
+                etatSession = intent.getStringExtra(EXTRA_ETAT_SESSION) ?: "HORS_SERVICE"
+                tempsDebutService = intent.getLongExtra(EXTRA_TEMPS_DEBUT_SERVICE, 0)
+                tempsDebutPause = intent.getLongExtra(EXTRA_TEMPS_DEBUT_PAUSE, 0)
+                tempsPauseCumule = intent.getLongExtra(EXTRA_TEMPS_PAUSE_CUMULE, 0)
                 
                 // Démarrer/arrêter le chrono selon l'état
-                if (etatActuel != "REPOS" && tempsDebut > 0) {
+                if (etatActuel != "REPOS" || etatSession != "HORS_SERVICE") {
                     startChrono()
                 } else {
                     stopChrono()
                 }
                 
                 // Mise à jour immédiate
-                val tempsEcoule = if (tempsDebut > 0) (System.currentTimeMillis() - tempsDebut) / 1000 else 0
-                val minutes = tempsEcoule / 60.0
-                val revenu = tarifPriseEnCharge + (minutes * tarifParMinute)
-                updateUI(etatActuel, tempsEcoule, revenu)
+                updateUI()
             }
         }
         
@@ -332,47 +335,79 @@ class WidgetOverlayService : Service() {
         isOverlayShowing = false
     }
 
-    private fun updateUI(etat: String, tempsEcoule: Long, revenu: Double) {
+    private fun updateUI() {
         overlayView?.let { view ->
-            // État
-            view.findViewById<TextView>(R.id.tv_etat)?.text = when(etat) {
-                "REPOS" -> "EN REPOS"
-                "PICKUP" -> "VERS CLIENT"
-                "EN_COURSE" -> "EN COURSE"
-                else -> etat
+            val maintenant = System.currentTimeMillis()
+            val tempsCourse = if (tempsDebut > 0) (maintenant - tempsDebut) / 1000 else 0
+            val revenu = tarifPriseEnCharge + (tempsCourse / 60.0) * tarifParMinute
+            val pauseEnCours = if (tempsDebutPause > 0) {
+                (maintenant - tempsDebutPause) / 1000
+            } else {
+                0
             }
-            
-            // Temps et revenu
-            view.findViewById<TextView>(R.id.tv_temps)?.text = "⏱️ ${formatTemps(tempsEcoule)}"
-            view.findViewById<TextView>(R.id.tv_revenu)?.text = "💰 ${formatArgent(revenu)}"
-            
-            // Boutons
+            val tempsService = if (tempsDebutService > 0) {
+                ((maintenant - tempsDebutService) / 1000 - tempsPauseCumule - pauseEnCours)
+                    .coerceAtLeast(0)
+            } else {
+                0
+            }
+
+            val tvEtat = view.findViewById<TextView>(R.id.tv_etat)
+            val tvTemps = view.findViewById<TextView>(R.id.tv_temps)
+            val tvRevenu = view.findViewById<TextView>(R.id.tv_revenu)
             val btnPrincipal = view.findViewById<Button>(R.id.btn_action)
             val btnSecondaire = view.findViewById<Button>(R.id.btn_secondaire)
-            
-            when(etat) {
-                "REPOS" -> {
-                    btnPrincipal?.text = "▶ DÉMARRER"
+
+            tvTemps?.visibility = View.VISIBLE
+
+            when {
+                etatSession == "HORS_SERVICE" -> {
+                    tvEtat?.text = "HORS SERVICE"
+                    tvTemps?.visibility = View.GONE
+                    tvRevenu?.visibility = View.GONE
+                    btnPrincipal?.text = "COMMENCER"
                     btnSecondaire?.visibility = View.GONE
                 }
-                "PICKUP" -> {
+                etatSession == "EN_PAUSE" -> {
+                    tvEtat?.text = "EN PAUSE"
+                    tvTemps?.text = "⏸ ${formatTemps(pauseEnCours)}"
+                    tvRevenu?.visibility = View.GONE
+                    btnPrincipal?.text = "REPRENDRE"
+                    btnSecondaire?.visibility = View.GONE
+                }
+                etatActuel == "REPOS" -> {
+                    tvEtat?.text = "EN SERVICE"
+                    tvTemps?.text = "⏱️ ${formatTemps(tempsService)}"
+                    tvRevenu?.visibility = View.GONE
+                    btnPrincipal?.text = "DÉMARRER COURSE"
+                    btnSecondaire?.text = "PAUSE"
+                    btnSecondaire?.visibility = View.VISIBLE
+                }
+                etatActuel == "PICKUP" -> {
+                    tvEtat?.text = "VERS CLIENT"
+                    tvTemps?.text = "⏱️ ${formatTemps(tempsCourse)}"
+                    tvRevenu?.text = "💰 ${formatArgent(revenu)}"
+                    tvRevenu?.visibility = View.VISIBLE
                     btnPrincipal?.text = "CLIENT MONTÉ"
                     btnSecondaire?.text = "ANNULER"
                     btnSecondaire?.visibility = View.VISIBLE
                 }
-                "EN_COURSE" -> {
+                etatActuel == "EN_COURSE" -> {
+                    tvEtat?.text = "EN COURSE"
+                    tvTemps?.text = "⏱️ ${formatTemps(tempsCourse)}"
+                    tvRevenu?.text = "💰 ${formatArgent(revenu)}"
+                    tvRevenu?.visibility = View.VISIBLE
                     btnPrincipal?.text = "ARRIVÉE"
-                    btnSecondaire?.text = "TERMINER"
-                    btnSecondaire?.visibility = View.VISIBLE
+                    btnSecondaire?.visibility = View.GONE
                 }
             }
-            
-            // Couleur
-            val couleur = when(etat) {
-                "REPOS" -> 0xE64a4a6a.toInt()
-                "PICKUP" -> 0xE6f39c12.toInt()
-                "EN_COURSE" -> 0xE627ae60.toInt()
-                else -> 0xE64a4a6a.toInt()
+
+            val couleur = when {
+                etatSession == "EN_PAUSE" -> 0xE6b7791f.toInt()
+                etatSession == "HORS_SERVICE" -> 0xE64a4a6a.toInt()
+                etatActuel == "PICKUP" -> 0xE6f39c12.toInt()
+                etatActuel == "EN_COURSE" -> 0xE627ae60.toInt()
+                else -> 0xE6346a98.toInt()
             }
             view.setBackgroundColor(couleur)
         }

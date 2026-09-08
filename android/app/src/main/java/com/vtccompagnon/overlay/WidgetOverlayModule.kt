@@ -6,7 +6,6 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Promise
-import com.facebook.react.modules.core.DeviceEventManagerModule
 
 class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
@@ -15,16 +14,6 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
     init {
         // Enregistrer le contexte React Native dans le receiver
         WidgetActionReceiver.reactContext = reactContext
-    }
-
-    private fun sendEvent(eventName: String) {
-        try {
-            reactApplicationContext
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                .emit(eventName, null)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 
     @ReactMethod
@@ -95,7 +84,17 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
     }
 
     @ReactMethod
-    fun updateOverlay(etat: String, tempsDebut: Double, tarifPec: Double, tarifMin: Double, promise: Promise) {
+    fun updateOverlay(
+        etat: String,
+        tempsDebut: Double,
+        tarifPec: Double,
+        tarifMin: Double,
+        etatSession: String,
+        tempsDebutService: Double,
+        tempsDebutPause: Double,
+        tempsPauseCumule: Double,
+        promise: Promise
+    ) {
         val context = reactApplicationContext
         val intent = Intent(context, WidgetOverlayService::class.java).apply {
             action = WidgetOverlayService.ACTION_UPDATE
@@ -103,6 +102,10 @@ class WidgetOverlayModule(reactContext: ReactApplicationContext) : ReactContextB
             putExtra(WidgetOverlayService.EXTRA_TEMPS_DEBUT, tempsDebut.toLong())
             putExtra(WidgetOverlayService.EXTRA_TARIF_PEC, tarifPec)
             putExtra(WidgetOverlayService.EXTRA_TARIF_MIN, tarifMin)
+            putExtra(WidgetOverlayService.EXTRA_ETAT_SESSION, etatSession)
+            putExtra(WidgetOverlayService.EXTRA_TEMPS_DEBUT_SERVICE, tempsDebutService.toLong())
+            putExtra(WidgetOverlayService.EXTRA_TEMPS_DEBUT_PAUSE, tempsDebutPause.toLong())
+            putExtra(WidgetOverlayService.EXTRA_TEMPS_PAUSE_CUMULE, tempsPauseCumule.toLong())
         }
         
         try {
