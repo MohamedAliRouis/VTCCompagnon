@@ -1,5 +1,7 @@
 import { Tarifs } from '../types';
 
+export { COULEURS } from './theme';
+
 // Clés AsyncStorage
 export const CLES_STOCKAGE = {
   STATS_JOUR: '@vtc_stats_jour',

@@ -7,6 +7,7 @@ import {
   ScrollView 
 } from 'react-native';
 import { useStatsStore, useSettingsStore } from '../../store';
+import { COULEURS } from '../../constants';
 import {
   formaterTemps,
   formaterArgent,
@@ -104,7 +105,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: COULEURS.fond,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 20,
     width: '85%',
     maxHeight: '80%',
@@ -116,16 +119,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: COULEURS.separateur,
   },
   titre: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COULEURS.texte,
   },
   fermer: {
     fontSize: 24,
-    color: 'rgba(255,255,255,0.6)',
+    color: COULEURS.texteSecondaire,
     padding: 4,
   },
   body: {
@@ -133,14 +136,16 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 12,
     padding: 12,
   },
   sectionTitre: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffd700',
+    color: COULEURS.accentClair,
     marginBottom: 10,
   },
   ligne: {
@@ -148,44 +153,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: COULEURS.separateur,
   },
   label: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: COULEURS.texteSecondaire,
   },
   valeur: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COULEURS.texte,
   },
   revenuHighlight: {
-    color: '#27ae60',
+    color: COULEURS.positif,
   },
   ligneHistorique: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: COULEURS.separateur,
   },
   dateHistorique: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
+    color: COULEURS.texteFaible,
   },
   statsHistorique: {
     fontSize: 12,
-    color: '#fff',
+    color: COULEURS.texte,
   },
   boutonFermer: {
-    backgroundColor: '#3498db',
+    backgroundColor: COULEURS.accent,
     margin: 16,
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
   },
   texteBoutonFermer: {
-    color: '#fff',
+    color: COULEURS.surAccent,
     fontWeight: 'bold',
     fontSize: 16,
   },

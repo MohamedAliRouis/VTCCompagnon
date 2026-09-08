@@ -44,6 +44,5 @@ export interface Tarifs {
 
 export interface Settings {
   tarifs: Tarifs;
-  theme: 'dark' | 'light';
   notifications: boolean;
 }

@@ -10,13 +10,11 @@ interface SettingsState {
   // Actions
   chargerSettings: () => Promise<void>;
   setTarifs: (tarifs: Tarifs) => Promise<void>;
-  setTheme: (theme: 'dark' | 'light') => Promise<void>;
   setNotifications: (actives: boolean) => Promise<void>;
 }
 
 const settingsInitiaux: Settings = {
   tarifs: TARIFS_DEFAUT,
-  theme: 'dark',
   notifications: true,
 };
 
@@ -33,13 +31,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setTarifs: async (tarifs: Tarifs) => {
     const { settings } = get();
     const nouveauxSettings = { ...settings, tarifs };
-    set({ settings: nouveauxSettings });
-    await sauvegarderSettings(nouveauxSettings);
-  },
-
-  setTheme: async (theme: 'dark' | 'light') => {
-    const { settings } = get();
-    const nouveauxSettings = { ...settings, theme };
     set({ settings: nouveauxSettings });
     await sauvegarderSettings(nouveauxSettings);
   },

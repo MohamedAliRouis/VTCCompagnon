@@ -1,18 +1,19 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   TextInput,
   Switch,
   TouchableOpacity,
-  Alert
+  Alert,
 } from 'react-native';
 import { useSettingsStore } from '../store';
+import { COULEURS } from '../constants';
 
 export const SettingsScreen: React.FC = () => {
-  const { settings, setTarifs, setTheme, setNotifications } = useSettingsStore();
+  const { settings, setTarifs, setNotifications } = useSettingsStore();
   const [priseEnCharge, setPriseEnCharge] = React.useState(
     settings.tarifs.priseEnCharge.toString()
   );
@@ -31,18 +32,18 @@ export const SettingsScreen: React.FC = () => {
   const sauvegarderTarifs = () => {
     const pec = parseFloat(priseEnCharge.replace(',', '.'));
     const min = parseFloat(parMinute.replace(',', '.'));
-    
+
     if (isNaN(pec) || isNaN(min) || pec < 0 || min < 0) {
       Alert.alert('Erreur', 'Veuillez entrer des valeurs valides');
       return;
     }
-    
+
     setTarifs({
       ...settings.tarifs,
       priseEnCharge: pec,
       parMinute: min,
     });
-    
+
     Alert.alert('Succès', 'Tarifs mis à jour');
   };
 
@@ -53,7 +54,7 @@ export const SettingsScreen: React.FC = () => {
       {/* Tarifs */}
       <View style={styles.section}>
         <Text style={styles.sectionTitre}>Tarifs estimés</Text>
-        
+
         <View style={styles.champ}>
           <Text style={styles.label}>Prise en charge (€)</Text>
           <TextInput
@@ -62,7 +63,7 @@ export const SettingsScreen: React.FC = () => {
             onChangeText={setPriseEnCharge}
             keyboardType="decimal-pad"
             placeholder="2.50"
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor={COULEURS.texteFaible}
           />
         </View>
 
@@ -74,7 +75,7 @@ export const SettingsScreen: React.FC = () => {
             onChangeText={setParMinute}
             keyboardType="decimal-pad"
             placeholder="0.35"
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor={COULEURS.texteFaible}
           />
         </View>
 
@@ -86,24 +87,14 @@ export const SettingsScreen: React.FC = () => {
       {/* Préférences */}
       <View style={styles.section}>
         <Text style={styles.sectionTitre}>Préférences</Text>
-        
+
         <View style={styles.option}>
           <Text style={styles.labelOption}>Notifications</Text>
           <Switch
             value={settings.notifications}
             onValueChange={setNotifications}
-            trackColor={{ false: '#767577', true: '#3498db' }}
-            thumbColor={settings.notifications ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        <View style={styles.option}>
-          <Text style={styles.labelOption}>Thème sombre</Text>
-          <Switch
-            value={settings.theme === 'dark'}
-            onValueChange={(value) => setTheme(value ? 'dark' : 'light')}
-            trackColor={{ false: '#767577', true: '#3498db' }}
-            thumbColor={settings.theme === 'dark' ? '#fff' : '#f4f3f4'}
+            trackColor={{ false: COULEURS.separateur, true: COULEURS.accent }}
+            thumbColor={COULEURS.texte}
           />
         </View>
       </View>
@@ -125,13 +116,13 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: COULEURS.fond,
     padding: 16,
   },
   titre: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COULEURS.texte,
     marginBottom: 20,
   },
   section: {
@@ -140,7 +131,7 @@ const styles = StyleSheet.create({
   sectionTitre: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffd700',
+    color: COULEURS.accentClair,
     marginBottom: 12,
   },
   champ: {
@@ -148,25 +139,27 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: COULEURS.texteSecondaire,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 8,
     padding: 12,
-    color: '#fff',
+    color: COULEURS.texte,
     fontSize: 16,
   },
   bouton: {
-    backgroundColor: '#3498db',
+    backgroundColor: COULEURS.accent,
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 8,
   },
   texteBouton: {
-    color: '#fff',
+    color: COULEURS.surAccent,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -176,20 +169,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: COULEURS.separateur,
   },
   labelOption: {
     fontSize: 14,
-    color: '#fff',
+    color: COULEURS.texte,
   },
   carte: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 12,
     padding: 16,
   },
   texteAPropos: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: COULEURS.texteSecondaire,
     textAlign: 'center',
     lineHeight: 22,
   },

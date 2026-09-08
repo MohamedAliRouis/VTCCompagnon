@@ -106,7 +106,6 @@ export const chargerSettings = async (): Promise<Settings> => {
   const settings = await charger<Settings>(CLES_STOCKAGE.SETTINGS);
   return settings || {
     tarifs: TARIFS_DEFAUT,
-    theme: 'dark',
     notifications: true,
   };
 };

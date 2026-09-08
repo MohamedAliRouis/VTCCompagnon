@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useStatsStore } from '../store';
+import { COULEURS } from '../constants';
 import { formaterTemps, formaterArgent, formaterDate } from '../utils/formatters';
 
 export const HistoryScreen: React.FC = () => {
@@ -99,13 +100,13 @@ export const HistoryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: COULEURS.fond,
     padding: 16,
   },
   titre: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COULEURS.texte,
     marginBottom: 20,
   },
   section: {
@@ -114,11 +115,13 @@ const styles = StyleSheet.create({
   sectionTitre: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffd700',
+    color: COULEURS.accentClair,
     marginBottom: 10,
   },
   carte: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 12,
     padding: 16,
   },
@@ -129,24 +132,26 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    color: COULEURS.texteSecondaire,
   },
   valeur: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COULEURS.texte,
   },
   revenu: {
-    color: '#27ae60',
+    color: COULEURS.positif,
   },
   vide: {
-    color: 'rgba(255,255,255,0.5)',
+    color: COULEURS.texteFaible,
     fontStyle: 'italic',
     textAlign: 'center',
     padding: 20,
   },
   carteJour: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -154,7 +159,7 @@ const styles = StyleSheet.create({
   dateJour: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COULEURS.texte,
     marginBottom: 8,
   },
   statsJour: {
@@ -163,6 +168,6 @@ const styles = StyleSheet.create({
   },
   statJour: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: COULEURS.texteSecondaire,
   },
 });

@@ -15,6 +15,7 @@ import {
   useSessionTimer,
   useWidgetOverlayBridge,
 } from './src/hooks';
+import { COULEURS } from './src/constants';
 
 const Tab = createBottomTabNavigator();
 
@@ -37,11 +38,11 @@ function App() {
           screenOptions={{
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: '#1a1a2e',
-              borderTopColor: 'rgba(255,255,255,0.1)',
+              backgroundColor: COULEURS.carte,
+              borderTopColor: COULEURS.carteBordure,
             },
-            tabBarActiveTintColor: '#3498db',
-            tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
+            tabBarActiveTintColor: COULEURS.accent,
+            tabBarInactiveTintColor: COULEURS.texteFaible,
           }}
         >
           <Tab.Screen
