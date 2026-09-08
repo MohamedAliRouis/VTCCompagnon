@@ -301,8 +301,8 @@ class WidgetOverlayService : Service() {
                 sendBroadcast(intent)
             }
             
-            // Bouton secondaire - envoie un broadcast + vibration
-            view.findViewById<Button>(R.id.btn_secondaire)?.setOnClickListener {
+            // Action secondaire (petite cible) - envoie un broadcast + vibration
+            view.findViewById<TextView>(R.id.btn_secondaire)?.setOnClickListener {
                 vibrate()
                 val intent = Intent(this, WidgetActionReceiver::class.java).apply {
                     action = WidgetActionReceiver.ACTION_SECONDAIRE
@@ -366,53 +366,45 @@ class WidgetOverlayService : Service() {
                 0
             }
 
-            val tvEtat = view.findViewById<TextView>(R.id.tv_etat)
             val tvTemps = view.findViewById<TextView>(R.id.tv_temps)
             val tvRevenu = view.findViewById<TextView>(R.id.tv_revenu)
             val btnPrincipal = view.findViewById<Button>(R.id.btn_action)
-            val btnSecondaire = view.findViewById<Button>(R.id.btn_secondaire)
+            val btnSecondaire = view.findViewById<TextView>(R.id.btn_secondaire)
 
-            tvTemps?.visibility = View.VISIBLE
+            // Par défaut : pas de revenu, pas d'action secondaire. Chaque état
+            // ne réactive que ce dont il a besoin. L'état est porté par le
+            // libellé du bouton et la couleur de fond, plus par un badge texte.
+            tvRevenu?.visibility = View.GONE
+            btnSecondaire?.visibility = View.GONE
 
             when {
                 etatSession == "HORS_SERVICE" -> {
-                    tvEtat?.text = "HORS SERVICE"
-                    tvTemps?.visibility = View.GONE
-                    tvRevenu?.visibility = View.GONE
+                    tvTemps?.text = "Hors service"
                     btnPrincipal?.text = "COMMENCER"
-                    btnSecondaire?.visibility = View.GONE
                 }
                 etatSession == "EN_PAUSE" -> {
-                    tvEtat?.text = "EN PAUSE"
                     tvTemps?.text = "⏸ ${formatTemps(pauseEnCours)}"
-                    tvRevenu?.visibility = View.GONE
                     btnPrincipal?.text = "REPRENDRE"
-                    btnSecondaire?.visibility = View.GONE
                 }
                 etatActuel == "REPOS" -> {
-                    tvEtat?.text = "EN SERVICE"
-                    tvTemps?.text = "⏱️ ${formatTemps(tempsService)}"
-                    tvRevenu?.visibility = View.GONE
+                    tvTemps?.text = formatTemps(tempsService)
                     btnPrincipal?.text = "DÉMARRER COURSE"
-                    btnSecondaire?.text = "PAUSE"
+                    btnSecondaire?.text = "⏸"
                     btnSecondaire?.visibility = View.VISIBLE
                 }
                 etatActuel == "PICKUP" -> {
-                    tvEtat?.text = "VERS CLIENT"
-                    tvTemps?.text = "⏱️ ${formatTemps(tempsCourse)}"
-                    tvRevenu?.text = "💰 ${formatArgent(revenu)}"
+                    tvTemps?.text = formatTemps(tempsCourse)
+                    tvRevenu?.text = formatArgent(revenu)
                     tvRevenu?.visibility = View.VISIBLE
                     btnPrincipal?.text = "CLIENT MONTÉ"
-                    btnSecondaire?.text = "ANNULER"
+                    btnSecondaire?.text = "✕"
                     btnSecondaire?.visibility = View.VISIBLE
                 }
                 etatActuel == "EN_COURSE" -> {
-                    tvEtat?.text = "EN COURSE"
-                    tvTemps?.text = "⏱️ ${formatTemps(tempsCourse)}"
-                    tvRevenu?.text = "💰 ${formatArgent(revenu)}"
+                    tvTemps?.text = formatTemps(tempsCourse)
+                    tvRevenu?.text = formatArgent(revenu)
                     tvRevenu?.visibility = View.VISIBLE
                     btnPrincipal?.text = "ARRIVÉE"
-                    btnSecondaire?.visibility = View.GONE
                 }
             }
 
@@ -423,7 +415,8 @@ class WidgetOverlayService : Service() {
                 etatActuel == "EN_COURSE" -> 0xE627ae60.toInt()
                 else -> 0xE6346a98.toInt()
             }
-            view.setBackgroundColor(couleur)
+            // Teinte le drawable au lieu de le remplacer : garde les coins arrondis.
+            view.background?.mutate()?.setTint(couleur)
         }
     }
 
