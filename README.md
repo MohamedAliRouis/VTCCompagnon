@@ -1,97 +1,185 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# VTC Compagnon
 
-# Getting Started
+Application mobile compagnon pour chauffeurs VTC. Suivi de courses, calcul de revenus et statistiques — 100% locale, sans backend.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+![React Native](https://img.shields.io/badge/React_Native-0.87.1-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Fonctionnalités
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+| Feature | Description |
+|---------|-------------|
+| **Widget flottant** | Suivi de course draggable avec 4 états (Repos → Pickup → En course → Retour) |
+| **Chronomètre** | Temps écoulé en temps réel |
+| **Calcul revenus** | Estimation basée sur tarifs personnalisables (prise en charge + €/min) |
+| **Statistiques** | Courses du jour, historique 7 jours, moyennes |
+| **Persistance** | Données sauvegardées localement (AsyncStorage), restauration après fermeture |
+| **Réglages** | Tarifs modifiables, thème, notifications |
 
-```sh
-# Using npm
+---
+
+## Prérequis
+
+- Node.js ≥ 22.11
+- Android SDK (via Android Studio)
+- Java 17+
+
+### Configuration SDK Android
+
+Créer `android/local.properties` avec le chemin de votre SDK :
+
+```properties
+sdk.dir=C:\\Users\\<username>\\AppData\\Local\\Android\\Sdk
+```
+
+> Ce fichier est gitignored (spécifique à chaque machine).
+
+---
+
+## Installation
+
+```bash
+# Cloner le repo
+git clone https://github.com/MohamedAliRouis/VTCCompagnon.git
+cd VTCCompagnon
+
+# Installer les dépendances
+npm install
+
+# Lancer Metro bundler (terminal 1)
 npm start
 
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+# Build et déploiement Android (terminal 2)
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+---
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Structure du projet
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```
+src/
+├── components/
+│   ├── Widget/           # Widget flottant (Badge, Chrono, Actions)
+│   └── Stats/            # Modal statistiques
+├── screens/
+│   ├── HomeScreen.tsx    # Accueil avec widget
+│   ├── HistoryScreen.tsx # Historique détaillé
+│   └── SettingsScreen.tsx# Réglages
+├── store/                # Zustand (state management)
+│   ├── courseStore.ts    # État course active
+│   ├── statsStore.ts     # Statistiques jour + historique
+│   └── settingsStore.ts  # Préférences utilisateur
+├── types/                # Types TypeScript
+├── utils/
+│   ├── formatters.ts     # formatTemps, formatArgent, dates
+│   └── storage.ts        # Helpers AsyncStorage
+└── constants/            # Tarifs, clés storage, couleurs
 ```
 
-Then, and every time you update your native dependencies, run:
+---
 
-```sh
-bundle exec pod install
+## Utilisation
+
+### Widget (Accueil)
+
+| État | Action | Résultat |
+|------|--------|----------|
+| 🟣 **Repos** | ▶ DÉMARRER | Passe à Pickup |
+| 🟠 **Pickup** | CLIENT MONTÉ | Passe à En course |
+| 🟢 **En course** | ARRIVÉE | Enregistre stats → Retour |
+| 🔵 **Retour** | TERMINER | Retour Repos |
+
+**Appui long** sur le widget ou tap sur "Aujourd'hui" → Modal statistiques détaillées.
+
+### Historique
+
+- Vue du jour en cours
+- Totaux 7 derniers jours
+- Détail par jour
+
+### Réglages
+
+- Modifier tarifs (prise en charge, €/min)
+- Activer/désactiver notifications
+- Thème sombre/clair (WIP)
+
+---
+
+## Stack technique
+
+| Couche | Technologie |
+|--------|-------------|
+| Framework | React Native 0.87.1 |
+| Langage | TypeScript (strict) |
+| Navigation | React Navigation (bottom tabs) |
+| State | Zustand |
+| Stockage | AsyncStorage |
+| Tests | Jest + React Test Renderer |
+| Lint | ESLint (@react-native) |
+
+---
+
+## Scripts
+
+| Commande | Description |
+|----------|-------------|
+| `npm start` | Lance Metro bundler |
+| `npm run android` | Build + déploie sur Android |
+| `npm run ios` | Build + déploie sur iOS (non testé) |
+| `npm test` | Lance les tests Jest |
+| `npm run lint` | Vérifie le code ESLint |
+| `npx tsc --noEmit` | Vérifie les types TypeScript |
+
+---
+
+## Workflow Git
+
+| Branche | Usage |
+|---------|-------|
+| `main` | Code stable, releases |
+| `develop` | Intégration continue |
+| `feature/*` | Nouvelles fonctionnalités |
+
+### Contribuer
+
+```bash
+# Nouvelle feature
+git checkout -b feature/ma-feature develop
+
+# Développer, tester...
+
+# Merger dans develop
+git checkout develop
+git merge feature/ma-feature
+git push origin develop
+
+# Quand stable → PR vers main
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+---
 
-```sh
-# Using npm
-npm run ios
+## Roadmap
 
-# OR using Yarn
-yarn ios
-```
+- [ ] GPS + distance parcourue
+- [ ] Graphiques revenus (charts)
+- [ ] Export CSV/PDF
+- [ ] Mode hors ligne complet
+- [ ] Notifications course détectée
+- [ ] Thème clair complet
+- [ ] iOS support
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## Licence
 
-## Step 3: Modify your app
+MIT — Voir [LICENSE](LICENSE)
 
-Now that you have successfully run the app, let's make changes!
+---
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## Auteur
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+**Mohamed Ali Rouis** — [GitHub](https://github.com/MohamedAliRouis)
