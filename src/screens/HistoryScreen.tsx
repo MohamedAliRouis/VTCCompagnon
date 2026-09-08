@@ -86,11 +86,16 @@ export const HistoryScreen: React.FC = () => {
             <View key={jour.date} style={styles.carteJour}>
               <Text style={styles.dateJour}>{formaterDate(jour.date)}</Text>
               <View style={styles.statsJour}>
-                <Text style={styles.statJour}>
+                <Text style={styles.statJour} numberOfLines={1}>
                   {jour.nbCourses} course{jour.nbCourses > 1 ? 's' : ''}
                 </Text>
-                <Text style={styles.statJour}>{formaterTemps(jour.tempsTotal)}</Text>
-                <Text style={[styles.statJour, styles.revenu]}>
+                <Text style={[styles.statJour, styles.statJourCentre]} numberOfLines={1}>
+                  {formaterTemps(jour.tempsTotal)}
+                </Text>
+                <Text
+                  style={[styles.statJour, styles.statJourDroite, styles.revenu]}
+                  numberOfLines={1}
+                >
                   {formaterArgent(jour.revenuTotal)}
                 </Text>
               </View>
@@ -169,10 +174,17 @@ const styles = StyleSheet.create({
   },
   statsJour: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   statJour: {
+    flex: 1,
     fontSize: 12,
     color: COULEURS.texteSecondaire,
+  },
+  statJourCentre: {
+    textAlign: 'center',
+  },
+  statJourDroite: {
+    textAlign: 'right',
   },
 });
