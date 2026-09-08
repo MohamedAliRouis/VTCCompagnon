@@ -1,0 +1,278 @@
+package com.vtccompagnon.overlay
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.graphics.PixelFormat
+import android.os.Build
+import android.os.IBinder
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.TextView
+import androidx.core.app.NotificationCompat
+import com.vtccompagnon.R
+import com.vtccompagnon.MainActivity
+
+class WidgetOverlayService : Service() {
+
+    private var windowManager: WindowManager? = null
+    private var overlayView: View? = null
+    private var isOverlayShowing = false
+    
+    // Pour le drag
+    private var initialX = 0
+    private var initialY = 0
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+
+    companion object {
+        const val CHANNEL_ID = "vtc_compagnon_overlay"
+        const val NOTIFICATION_ID = 1001
+        
+        const val ACTION_SHOW = "ACTION_SHOW"
+        const val ACTION_HIDE = "ACTION_HIDE"
+        const val ACTION_UPDATE = "ACTION_UPDATE"
+        
+        const val EXTRA_ETAT = "EXTRA_ETAT"
+        const val EXTRA_TEMPS = "EXTRA_TEMPS"
+        const val EXTRA_REVENU = "EXTRA_REVENU"
+        
+        @Volatile
+        var isRunning = false
+            private set
+            
+        // Callbacks statiques pour les actions (seront définis par le module RN)
+        var onActionPrincipale: (() -> Unit)? = null
+        var onActionSecondaire: (() -> Unit)? = null
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        createNotificationChannel()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_SHOW -> showOverlay()
+            ACTION_HIDE -> hideOverlay()
+            ACTION_UPDATE -> updateOverlay(
+                etat = intent.getStringExtra(EXTRA_ETAT) ?: "REPOS",
+                temps = intent.getLongExtra(EXTRA_TEMPS, 0),
+                revenu = intent.getDoubleExtra(EXTRA_REVENU, 0.0)
+            )
+        }
+        
+        startForeground(NOTIFICATION_ID, createNotification())
+        isRunning = true
+        
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        hideOverlay()
+        isRunning = false
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "VTC Compagnon Widget",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Widget flottant pour suivi de course"
+                setShowBadge(false)
+            }
+            
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createNotification(): Notification {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("VTC Compagnon actif")
+            .setContentText("Widget de suivi en cours d'utilisation")
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setSilent(true)
+            .build()
+    }
+
+    @Suppress("ClickableViewAccessibility")
+    private fun showOverlay() {
+        if (isOverlayShowing || overlayView != null) return
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+            return
+        }
+
+        overlayView = LayoutInflater.from(this).inflate(R.layout.widget_overlay, null)
+        
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            },
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.END
+            x = 16
+            y = 100
+        }
+
+        setupDragListener(params)
+        setupButtons()
+
+        try {
+            windowManager?.addView(overlayView, params)
+            isOverlayShowing = true
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    @Suppress("ClickableViewAccessibility")
+    private fun setupDragListener(params: WindowManager.LayoutParams) {
+        overlayView?.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = params.x
+                    initialY = params.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = initialX + (initialTouchX - event.rawX).toInt()
+                    params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    try {
+                        windowManager?.updateViewLayout(overlayView, params)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun setupButtons() {
+        overlayView?.let { view ->
+            view.findViewById<Button>(R.id.btn_action)?.setOnClickListener {
+                onActionPrincipale?.invoke()
+            }
+            
+            view.findViewById<Button>(R.id.btn_secondaire)?.setOnClickListener {
+                onActionSecondaire?.invoke()
+            }
+        }
+    }
+
+    private fun hideOverlay() {
+        overlayView?.let {
+            try {
+                windowManager?.removeView(it)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        overlayView = null
+        isOverlayShowing = false
+    }
+
+    private fun updateOverlay(etat: String, temps: Long, revenu: Double) {
+        overlayView?.let { view ->
+            view.findViewById<TextView>(R.id.tv_etat)?.text = when(etat) {
+                "REPOS" -> "EN REPOS"
+                "PICKUP" -> "VERS CLIENT"
+                "EN_COURSE" -> "EN COURSE"
+                "RETOUR" -> "RETOUR"
+                else -> etat
+            }
+            
+            view.findViewById<TextView>(R.id.tv_temps)?.text = "⏱️ ${formatTemps(temps)}"
+            view.findViewById<TextView>(R.id.tv_revenu)?.text = "💰 ${formatArgent(revenu)}"
+            
+            val btnPrincipal = view.findViewById<Button>(R.id.btn_action)
+            val btnSecondaire = view.findViewById<Button>(R.id.btn_secondaire)
+            
+            when(etat) {
+                "REPOS" -> {
+                    btnPrincipal?.text = "▶ DÉMARRER"
+                    btnSecondaire?.visibility = View.GONE
+                }
+                "PICKUP" -> {
+                    btnPrincipal?.text = "CLIENT MONTÉ"
+                    btnSecondaire?.text = "ANNULER"
+                    btnSecondaire?.visibility = View.VISIBLE
+                }
+                "EN_COURSE" -> {
+                    btnPrincipal?.text = "ARRIVÉE"
+                    btnSecondaire?.text = "TERMINER"
+                    btnSecondaire?.visibility = View.VISIBLE
+                }
+                "RETOUR" -> {
+                    btnPrincipal?.text = "TERMINER"
+                    btnSecondaire?.text = "NOUVELLE"
+                    btnSecondaire?.visibility = View.VISIBLE
+                }
+            }
+            
+            val couleur = when(etat) {
+                "REPOS" -> 0xE64a4a6a.toInt()
+                "PICKUP" -> 0xE6f39c12.toInt()
+                "EN_COURSE" -> 0xE627ae60.toInt()
+                "RETOUR" -> 0xE63498db.toInt()
+                else -> 0xE64a4a6a.toInt()
+            }
+            view.setBackgroundColor(couleur)
+        }
+    }
+
+    private fun formatTemps(secondes: Long): String {
+        val h = secondes / 3600
+        val m = (secondes % 3600) / 60
+        val s = secondes % 60
+        
+        return if (h > 0) {
+            String.format("%02d:%02d:%02d", h, m, s)
+        } else {
+            String.format("%02d:%02d", m, s)
+        }
+    }
+
+    private fun formatArgent(montant: Double): String {
+        return String.format("%.2f €", montant).replace(".", ",")
+    }
+}
