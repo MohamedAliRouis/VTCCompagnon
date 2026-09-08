@@ -20,6 +20,14 @@ export const SettingsScreen: React.FC = () => {
     settings.tarifs.parMinute.toString()
   );
 
+  // Les settings se chargent en asynchrone : resynchroniser les champs quand
+  // les vrais tarifs sauvegardés arrivent (sinon ils restent sur les valeurs
+  // par défaut affichées au premier render).
+  React.useEffect(() => {
+    setPriseEnCharge(settings.tarifs.priseEnCharge.toString());
+    setParMinute(settings.tarifs.parMinute.toString());
+  }, [settings.tarifs.priseEnCharge, settings.tarifs.parMinute]);
+
   const sauvegarderTarifs = () => {
     const pec = parseFloat(priseEnCharge.replace(',', '.'));
     const min = parseFloat(parMinute.replace(',', '.'));

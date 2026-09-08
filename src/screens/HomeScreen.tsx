@@ -78,11 +78,14 @@ export const HomeScreen: React.FC = () => {
           setOverlayActif(running);
         }
       });
+      // Rafraîchir les stats à chaque retour sur l'écran : couvre le passage
+      // de minuit pendant que l'app était en arrière-plan.
+      chargerStats();
 
       return () => {
         screenActive = false;
       };
-    }, [isRunning]),
+    }, [isRunning, chargerStats]),
   );
 
   const afficherOverlay = useCallback(async () => {

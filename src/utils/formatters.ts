@@ -23,9 +23,14 @@ export const formaterDate = (isoString: string): string => {
   return format(new Date(isoString), 'dd/MM/yyyy');
 };
 
-// Obtenir la date du jour (YYYY-MM-DD)
+// Obtenir la date du jour (YYYY-MM-DD) dans le fuseau local.
+// toISOString() renverrait la date UTC : une course terminée à 00h30 à Paris
+// serait comptée sur le jour précédent.
 export const getDateJour = (): string => {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const mois = String(d.getMonth() + 1).padStart(2, '0');
+  const jour = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mois}-${jour}`;
 };
 
 // Générer un ID unique

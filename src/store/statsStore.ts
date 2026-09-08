@@ -47,17 +47,27 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   },
 
   terminerCourse: async (tempsEcoule: number, revenu: number) => {
+    const dateJour = getDateJour();
     const { statsJour } = get();
+
+    // Si la session a franchi minuit (chauffeur de nuit), on repart d'une
+    // journée vierge au lieu d'empiler sur la veille.
+    const base =
+      statsJour.date === dateJour
+        ? statsJour
+        : { nbCourses: 0, tempsTotal: 0, revenuTotal: 0, date: dateJour };
+
     const nouvellesStats: StatsJour = {
-      ...statsJour,
-      nbCourses: statsJour.nbCourses + 1,
-      tempsTotal: statsJour.tempsTotal + tempsEcoule,
-      revenuTotal: statsJour.revenuTotal + revenu,
+      date: dateJour,
+      nbCourses: base.nbCourses + 1,
+      tempsTotal: base.tempsTotal + tempsEcoule,
+      revenuTotal: base.revenuTotal + revenu,
     };
-    
+
     set({ statsJour: nouvellesStats });
     await sauvegarder(CLES_STOCKAGE.STATS_JOUR, nouvellesStats);
-    
+    await sauvegarder(CLES_STOCKAGE.DATE_DERNIER_RESET, dateJour);
+
     // Mettre à jour l'historique
     await ajouterHistorique(nouvellesStats);
     const nouvelHistorique = await chargerHistorique();
