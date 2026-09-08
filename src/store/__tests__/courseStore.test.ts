@@ -8,6 +8,18 @@ jest.mock('../../utils/storage', () => ({
   sauvegarderCourseEnCours: jest.fn(),
 }));
 
+const mockSupprimerCourse = jest.fn();
+jest.mock('../historyStore', () => ({
+  useHistoryStore: {
+    getState: () => ({ supprimerCourse: mockSupprimerCourse }),
+  },
+}));
+
+const mockRetirerCourse = jest.fn();
+jest.mock('../statsStore', () => ({
+  useStatsStore: { getState: () => ({ retirerCourse: mockRetirerCourse }) },
+}));
+
 const storage = require('../../utils/storage');
 
 const store = () => useCourseStore.getState();
@@ -16,17 +28,25 @@ const course = () => useCourseStore.getState().course;
 const T0 = 1_700_000_000_000;
 let clock = T0;
 let nowSpy: jest.SpyInstance;
+const setNow = (ms: number) => {
+  clock = ms;
+};
 
 beforeEach(() => {
+  jest.useFakeTimers();
   clock = T0;
   nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => clock);
   store().annulerCourse(); // reset -> REPOS
+  store().oublierAnnulation();
   (storage.chargerCourseEnCours as jest.Mock).mockReset();
   (storage.sauvegarderCourseEnCours as jest.Mock).mockReset();
+  mockSupprimerCourse.mockReset().mockResolvedValue(undefined);
+  mockRetirerCourse.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   nowSpy.mockRestore();
+  jest.useRealTimers();
 });
 
 describe('transitions', () => {
@@ -111,5 +131,70 @@ describe('rechargement depuis le stockage', () => {
     store().demarrerCourse();
     await store().chargerDepuisStockage();
     expect(course().etat).toBe('PICKUP'); // état courant préservé
+  });
+});
+
+describe("fenêtre d'annulation après ARRIVÉE", () => {
+  const annulation = {
+    idHistorique: 'h1',
+    tempsDebut: T0 - 600_000, // course démarrée 10 min plus tôt
+    duree: 600,
+    revenu: 12,
+    date: '2026-09-09',
+  };
+
+  it('preparerAnnulation ouvre une fenêtre datée', () => {
+    store().preparerAnnulation(annulation);
+
+    const a = store().annulationEnAttente;
+    expect(a).toMatchObject(annulation);
+    expect(a!.expireA).toBe(T0 + 10_000);
+  });
+
+  it('annulerFinDeCourse défait le journal, les stats, et remet la course', async () => {
+    store().preparerAnnulation(annulation);
+    setNow(T0 + 3_000); // 3 s plus tard, dans la fenêtre
+
+    await store().annulerFinDeCourse();
+
+    expect(mockSupprimerCourse).toHaveBeenCalledWith('h1');
+    expect(mockRetirerCourse).toHaveBeenCalledWith({
+      tempsEcoule: 600,
+      revenu: 12,
+      date: '2026-09-09',
+    });
+    // la course repart de son timestamp d'origine, pas d'un nouveau
+    expect(course().etat).toBe('EN_COURSE');
+    expect(course().tempsDebut).toBe(annulation.tempsDebut);
+    expect(course().tempsEcoule).toBe(603);
+    expect(store().annulationEnAttente).toBeNull();
+  });
+
+  it('ne fait rien une fois la fenêtre expirée', async () => {
+    store().preparerAnnulation(annulation);
+    setNow(T0 + 15_000); // au-delà des 10 s
+
+    await store().annulerFinDeCourse();
+
+    expect(mockSupprimerCourse).not.toHaveBeenCalled();
+    expect(mockRetirerCourse).not.toHaveBeenCalled();
+    expect(course().etat).toBe('REPOS');
+  });
+
+  it('la fenêtre se referme toute seule au bout du délai', () => {
+    store().preparerAnnulation(annulation);
+    expect(store().annulationEnAttente).not.toBeNull();
+
+    jest.advanceTimersByTime(10_000);
+
+    expect(store().annulationEnAttente).toBeNull();
+  });
+
+  it('démarrer une nouvelle course referme la fenêtre', () => {
+    store().preparerAnnulation(annulation);
+    store().demarrerCourse();
+
+    expect(store().annulationEnAttente).toBeNull();
+    expect(course().etat).toBe('PICKUP');
   });
 });

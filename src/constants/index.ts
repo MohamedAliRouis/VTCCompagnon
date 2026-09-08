@@ -19,6 +19,9 @@ export const CLES_STOCKAGE = {
 export const RETENTION_JOURS = 90;
 export const RETENTIONS_POSSIBLES = [30, 90, 365] as const;
 
+// Fenêtre pendant laquelle une course terminée par erreur reste annulable.
+export const DUREE_ANNULATION_MS = 10_000;
+
 // Tarifs par défaut (modifiables dans Settings)
 export const TARIFS_DEFAUT: Tarifs = {
   priseEnCharge: 2.50,

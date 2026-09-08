@@ -10,10 +10,16 @@ interface StatsState {
   chargement: boolean;
 
   chargerStats: () => Promise<void>;
+  // Renvoie l'id de la ligne créée dans le journal (pour une éventuelle annulation).
   terminerCourse: (params: {
     tempsEcoule: number;
     revenu: number;
     debut: number;
+  }) => Promise<string>;
+  retirerCourse: (params: {
+    tempsEcoule: number;
+    revenu: number;
+    date: string;
   }) => Promise<void>;
   resetJour: () => Promise<void>;
 }
@@ -58,9 +64,29 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     await sauvegarder(CLES_STOCKAGE.DATE_DERNIER_RESET, dateJour);
 
     // Journal détaillé (source de vérité de l'historique).
-    await useHistoryStore
+    return useHistoryStore
       .getState()
       .enregistrerCourse({ debut, duree: tempsEcoule, revenu });
+  },
+
+  // Défait terminerCourse : utilisé par la fenêtre d'annulation après ARRIVÉE.
+  retirerCourse: async ({ tempsEcoule, revenu, date }) => {
+    const { statsJour } = get();
+    if (statsJour.date !== date) {
+      // Minuit est passé depuis : les compteurs du jour ne contiennent plus
+      // cette course, il n'y a rien à décrémenter.
+      return;
+    }
+
+    const maj: StatsJour = {
+      date: statsJour.date,
+      nbCourses: Math.max(0, statsJour.nbCourses - 1),
+      tempsTotal: Math.max(0, statsJour.tempsTotal - tempsEcoule),
+      revenuTotal: Math.max(0, statsJour.revenuTotal - revenu),
+    };
+
+    set({ statsJour: maj });
+    await sauvegarder(CLES_STOCKAGE.STATS_JOUR, maj);
   },
 
   resetJour: async () => {

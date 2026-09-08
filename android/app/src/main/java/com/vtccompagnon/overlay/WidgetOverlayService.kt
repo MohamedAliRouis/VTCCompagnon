@@ -46,6 +46,7 @@ class WidgetOverlayService : Service() {
     private var tempsDebutService: Long = 0
     private var tempsDebutPause: Long = 0
     private var tempsPauseCumule: Long = 0
+    private var annulationPossible: Boolean = false
     
     private val handler = Handler(Looper.getMainLooper())
     private val chronoRunnable = object : Runnable {
@@ -71,6 +72,7 @@ class WidgetOverlayService : Service() {
         const val EXTRA_TEMPS_DEBUT_SERVICE = "EXTRA_TEMPS_DEBUT_SERVICE"
         const val EXTRA_TEMPS_DEBUT_PAUSE = "EXTRA_TEMPS_DEBUT_PAUSE"
         const val EXTRA_TEMPS_PAUSE_CUMULE = "EXTRA_TEMPS_PAUSE_CUMULE"
+        const val EXTRA_ANNULATION = "EXTRA_ANNULATION"
 
         private const val POSITION_PREFERENCES = "widget_overlay_position"
         private const val POSITION_X = "position_x"
@@ -112,6 +114,7 @@ class WidgetOverlayService : Service() {
                 tempsDebutService = intent.getLongExtra(EXTRA_TEMPS_DEBUT_SERVICE, 0)
                 tempsDebutPause = intent.getLongExtra(EXTRA_TEMPS_DEBUT_PAUSE, 0)
                 tempsPauseCumule = intent.getLongExtra(EXTRA_TEMPS_PAUSE_CUMULE, 0)
+                annulationPossible = intent.getBooleanExtra(EXTRA_ANNULATION, false)
                 
                 // Démarrer/arrêter le chrono selon l'état
                 if (etatActuel != "REPOS" || etatSession != "HORS_SERVICE") {
@@ -389,7 +392,9 @@ class WidgetOverlayService : Service() {
                 etatActuel == "REPOS" -> {
                     tvTemps?.text = formatTemps(tempsService)
                     btnPrincipal?.text = "DÉMARRER COURSE"
-                    btnSecondaire?.text = "⏸"
+                    // Juste après une ARRIVÉE, la petite cible sert à revenir
+                    // en arrière plutôt qu'à mettre en pause.
+                    btnSecondaire?.text = if (annulationPossible) "↩" else "⏸"
                     btnSecondaire?.visibility = View.VISIBLE
                 }
                 etatActuel == "PICKUP" -> {

@@ -102,6 +102,10 @@ export const HomeScreen: React.FC = () => {
   const objectifJournalier = useSettingsStore(
     state => state.settings.objectifJournalier,
   );
+  const annulationEnAttente = useCourseStore(
+    state => state.annulationEnAttente,
+  );
+  const annulerFinDeCourse = useCourseStore(state => state.annulerFinDeCourse);
   const commencerService = useSessionStore(state => state.commencerService);
   const mettreEnPause = useSessionStore(state => state.mettreEnPause);
   const reprendreService = useSessionStore(state => state.reprendreService);
@@ -248,6 +252,20 @@ export const HomeScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.surtitre}>VTC COMPAGNON</Text>
         <Text style={styles.titre}>Tableau de bord</Text>
+
+        {annulationEnAttente ? (
+          <View style={styles.annulationBarre}>
+            <Text style={styles.annulationTexte}>
+              Course enregistrée · {formaterArgent(annulationEnAttente.revenu)}
+            </Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={annulerFinDeCourse}
+            >
+              <Text style={styles.annulationLien}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <View style={styles.sessionCard}>
           <View style={styles.cardHeader}>
@@ -451,6 +469,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 6,
     marginBottom: 22,
+  },
+  annulationBarre: {
+    alignItems: 'center',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.alerte,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  annulationTexte: {
+    color: COULEURS.texteSecondaire,
+    flex: 1,
+    fontSize: 13,
+  },
+  annulationLien: {
+    color: COULEURS.alerte,
+    fontSize: 13,
+    fontWeight: '800',
+    paddingLeft: 12,
   },
   courseCard: {
     backgroundColor: COULEURS.carte,
