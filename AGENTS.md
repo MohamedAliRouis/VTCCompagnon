@@ -26,16 +26,17 @@ This file is gitignored (contains machine-specific path).
 
 ## Architecture Notes
 - `App.tsx` owns the bottom-tab navigator; screens live in `src/screens/`.
-- Zustand stores in `src/store/` own course, stats, and settings state.
+- Zustand stores in `src/store/` independently own course, work-session, stats, and settings state.
 - AsyncStorage helpers are in `src/utils/storage.ts`; app keys use the `@vtc_*` prefix.
 - The system overlay is native Android code under `android/app/src/main/java/com/vtccompagnon/overlay/` and is manually registered in `MainApplication.kt`.
 
 ## Key Implementation Details
-- **The native overlay is the only course control UI**; `HomeScreen` is a read-only dashboard plus overlay show/hide control. Do not reintroduce duplicate course buttons on the home screen.
+- **The native overlay is the only course control UI**; `HomeScreen` controls the work session and overlay but only displays course state. Do not reintroduce duplicate course buttons on the home screen.
 - **Course state machine**: 3 states, transitions driven by button taps; there is no automatic GPS detection.
+- **Work session state machine**: `HORS_SERVICE -> EN_SERVICE <-> EN_PAUSE`; a course can only start while `EN_SERVICE`, and service cannot end during a course.
 - **Revenue calculation**: `2.50€ + (0.35€ × minutes)` — configurable in `TARIFS` constant.
 - **Overlay timing**: the native foreground service calculates elapsed time and revenue so it keeps updating while React Native is backgrounded.
-- **Global wiring**: `App.tsx` must mount `useCourseTimer()` and `useWidgetOverlay(true)`; screen-level calls use `useWidgetOverlay()` without native event listeners.
+- **Global wiring**: `App.tsx` must mount `useCourseTimer()`, `useSessionTimer()`, and `useWidgetOverlay(true)`; screen-level calls use `useWidgetOverlay()` without native event listeners.
 - **Overlay position**: native `SharedPreferences` persist `WindowManager.LayoutParams.x/y`; do not move this state to AsyncStorage.
 
 ## Known Limitations / Future Work
