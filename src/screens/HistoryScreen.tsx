@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useStatsStore } from '../store';
-import { formaterTemps, formaterArgent } from '../utils/formatters';
+import { formaterTemps, formaterArgent, formaterDate } from '../utils/formatters';
 
 export const HistoryScreen: React.FC = () => {
   const { historique, statsJour } = useStatsStore();
@@ -76,9 +76,9 @@ export const HistoryScreen: React.FC = () => {
         {historique.length === 0 ? (
           <Text style={styles.vide}>Aucun historique</Text>
         ) : (
-          historique.map((jour, index) => (
-            <View key={index} style={styles.carteJour}>
-              <Text style={styles.dateJour}>{jour.date}</Text>
+          historique.map(jour => (
+            <View key={jour.date} style={styles.carteJour}>
+              <Text style={styles.dateJour}>{formaterDate(jour.date)}</Text>
               <View style={styles.statsJour}>
                 <Text style={styles.statJour}>
                   {jour.nbCourses} course{jour.nbCourses > 1 ? 's' : ''}

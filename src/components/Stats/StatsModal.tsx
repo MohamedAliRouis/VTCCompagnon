@@ -7,7 +7,11 @@ import {
   ScrollView 
 } from 'react-native';
 import { useStatsStore, useSettingsStore } from '../../store';
-import { formaterTemps, formaterArgent } from '../../utils/formatters';
+import {
+  formaterTemps,
+  formaterArgent,
+  formaterDate,
+} from '../../utils/formatters';
 
 interface StatsModalProps {
   onClose: () => void;
@@ -59,9 +63,9 @@ export const StatsModal: React.FC<StatsModalProps> = ({ onClose }) => {
           {historique.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitre}>7 derniers jours</Text>
-              {historique.map((jour, index) => (
-                <View key={index} style={styles.ligneHistorique}>
-                  <Text style={styles.dateHistorique}>{jour.date}</Text>
+              {historique.map(jour => (
+                <View key={jour.date} style={styles.ligneHistorique}>
+                  <Text style={styles.dateHistorique}>{formaterDate(jour.date)}</Text>
                   <Text style={styles.statsHistorique}>
                     {jour.nbCourses} courses · {formaterArgent(jour.revenuTotal)}
                   </Text>

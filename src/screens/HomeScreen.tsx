@@ -11,12 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatsModal } from '../components/Stats';
-import {
-  useCourseStore,
-  useSessionStore,
-  useSettingsStore,
-  useStatsStore,
-} from '../store';
+import { useCourseStore, useSessionStore, useStatsStore } from '../store';
 import { useOverlayControls } from '../hooks';
 import { COULEURS_ETAT, TEXTES_ETAT } from '../constants';
 import { formaterArgent, formaterTemps } from '../utils/formatters';
@@ -33,23 +28,70 @@ const TEXTES_SESSION = {
   EN_PAUSE: 'EN PAUSE',
 } as const;
 
+// Sous-composants isolés pour que le tick chrono (chaque seconde) ne re-render
+// que ce bloc, pas toute la page.
+const MetriquesSession = React.memo<{ enPause: boolean }>(({ enPause }) => {
+  const tempsServiceEcoule = useSessionStore(s => s.session.tempsServiceEcoule);
+  const tempsPauseEcoule = useSessionStore(s => s.session.tempsPauseEcoule);
+  const tempsPauseCumule = useSessionStore(s => s.session.tempsPauseCumule);
+
+  return (
+    <View style={styles.sessionMetrics}>
+      <View>
+        <Text style={styles.metricLabel}>Temps travaillé</Text>
+        <Text style={styles.sessionTimeValue}>
+          {formaterTemps(tempsServiceEcoule)}
+        </Text>
+      </View>
+      <View style={styles.metricRight}>
+        <Text style={styles.metricLabel}>
+          {enPause ? 'Pause actuelle' : 'Pauses cumulées'}
+        </Text>
+        <Text style={styles.pauseTimeValue}>
+          {formaterTemps(enPause ? tempsPauseEcoule : tempsPauseCumule)}
+        </Text>
+      </View>
+    </View>
+  );
+});
+MetriquesSession.displayName = 'MetriquesSession';
+
+const MetriquesCourse = React.memo(() => {
+  const tempsEcoule = useCourseStore(s => s.course.tempsEcoule);
+  const revenuEstime = useCourseStore(s => s.course.revenuEstime);
+
+  return (
+    <View style={styles.courseMetrics}>
+      <View>
+        <Text style={styles.metricLabel}>Temps</Text>
+        <Text style={styles.metricValue}>{formaterTemps(tempsEcoule)}</Text>
+      </View>
+      <View style={styles.metricRight}>
+        <Text style={styles.metricLabel}>Revenu estimé</Text>
+        <Text style={styles.revenuValue}>{formaterArgent(revenuEstime)}</Text>
+      </View>
+    </View>
+  );
+});
+MetriquesCourse.displayName = 'MetriquesCourse';
+
 export const HomeScreen: React.FC = () => {
   const [modalStatsVisible, setModalStatsVisible] = useState(false);
   const [overlayActif, setOverlayActif] = useState(false);
   const [actionOverlayEnCours, setActionOverlayEnCours] = useState(false);
   const [attentePermission, setAttentePermission] = useState(false);
 
-  const course = useCourseStore(state => state.course);
-  const chargerDepuisStockage = useCourseStore(state => state.chargerDepuisStockage);
+  // Sélecteurs fins : l'écran ne se re-render que sur une transition d'état.
+  // Les valeurs qui défilent (temps, revenu) vivent dans des sous-composants
+  // mémoïsés plus bas.
+  const courseEtat = useCourseStore(state => state.course.etat);
+  const sessionEtat = useSessionStore(state => state.session.etat);
   const statsJour = useStatsStore(state => state.statsJour);
   const chargerStats = useStatsStore(state => state.chargerStats);
-  const chargerSettings = useSettingsStore(state => state.chargerSettings);
-  const session = useSessionStore(state => state.session);
   const commencerService = useSessionStore(state => state.commencerService);
   const mettreEnPause = useSessionStore(state => state.mettreEnPause);
   const reprendreService = useSessionStore(state => state.reprendreService);
   const terminerService = useSessionStore(state => state.terminerService);
-  const chargerSession = useSessionStore(state => state.chargerDepuisStockage);
   const {
     isSupported,
     checkPermission,
@@ -59,15 +101,6 @@ export const HomeScreen: React.FC = () => {
     updateOverlay,
     isRunning,
   } = useOverlayControls();
-
-  useEffect(() => {
-    Promise.all([
-      chargerDepuisStockage(),
-      chargerStats(),
-      chargerSettings(),
-      chargerSession(),
-    ]).catch(error => console.error('Erreur initialisation:', error));
-  }, [chargerDepuisStockage, chargerSession, chargerSettings, chargerStats]);
 
   useFocusEffect(
     useCallback(() => {
@@ -155,7 +188,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   const demanderPause = () => {
-    if (course.etat !== 'REPOS') {
+    if (courseEtat !== 'REPOS') {
       Alert.alert(
         'Course en cours',
         'Terminez ou annulez la course avant de prendre une pause.',
@@ -166,7 +199,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   const demanderFinService = () => {
-    if (course.etat !== 'REPOS') {
+    if (courseEtat !== 'REPOS') {
       Alert.alert(
         'Course en cours',
         'Terminez ou annulez la course avant de clôturer votre service.',
@@ -174,6 +207,7 @@ export const HomeScreen: React.FC = () => {
       return;
     }
 
+    const { session } = useSessionStore.getState();
     Alert.alert(
       'Terminer le service ?',
       `Temps travaillé : ${formaterTemps(session.tempsServiceEcoule)}\nPauses : ${formaterTemps(session.tempsPauseCumule + session.tempsPauseEcoule)}`,
@@ -197,18 +231,18 @@ export const HomeScreen: React.FC = () => {
             <View
               style={[
                 styles.sessionBadge,
-                session.etat === 'EN_PAUSE'
+                sessionEtat === 'EN_PAUSE'
                   ? styles.sessionBadgePause
-                  : session.etat === 'EN_SERVICE'
+                  : sessionEtat === 'EN_SERVICE'
                     ? styles.sessionBadgeActive
                     : styles.sessionBadgeInactive,
               ]}
             >
-              <Text style={styles.sessionBadgeText}>{TEXTES_SESSION[session.etat]}</Text>
+              <Text style={styles.sessionBadgeText}>{TEXTES_SESSION[sessionEtat]}</Text>
             </View>
           </View>
 
-          {session.etat === 'HORS_SERVICE' ? (
+          {sessionEtat === 'HORS_SERVICE' ? (
             <>
               <Text style={styles.sessionMessage}>
                 Démarrez votre session pour suivre votre temps de travail et vos pauses.
@@ -223,34 +257,15 @@ export const HomeScreen: React.FC = () => {
             </>
           ) : (
             <>
-              <View style={styles.sessionMetrics}>
-                <View>
-                  <Text style={styles.metricLabel}>Temps travaillé</Text>
-                  <Text style={styles.sessionTimeValue}>
-                    {formaterTemps(session.tempsServiceEcoule)}
-                  </Text>
-                </View>
-                <View style={styles.metricRight}>
-                  <Text style={styles.metricLabel}>
-                    {session.etat === 'EN_PAUSE' ? 'Pause actuelle' : 'Pauses cumulées'}
-                  </Text>
-                  <Text style={styles.pauseTimeValue}>
-                    {formaterTemps(
-                      session.etat === 'EN_PAUSE'
-                        ? session.tempsPauseEcoule
-                        : session.tempsPauseCumule,
-                    )}
-                  </Text>
-                </View>
-              </View>
+              <MetriquesSession enPause={sessionEtat === 'EN_PAUSE'} />
 
               <TouchableOpacity
                 accessibilityRole="button"
-                onPress={session.etat === 'EN_PAUSE' ? reprendreService : demanderPause}
+                onPress={sessionEtat === 'EN_PAUSE' ? reprendreService : demanderPause}
                 style={styles.sessionPrimaryButton}
               >
                 <Text style={styles.sessionPrimaryButtonText}>
-                  {session.etat === 'EN_PAUSE' ? 'Reprendre mon service' : 'Faire une pause'}
+                  {sessionEtat === 'EN_PAUSE' ? 'Reprendre mon service' : 'Faire une pause'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -271,29 +286,18 @@ export const HomeScreen: React.FC = () => {
               <View
                 style={[
                   styles.etatDot,
-                  { backgroundColor: COULEURS_ETAT[course.etat] },
+                  { backgroundColor: COULEURS_ETAT[courseEtat] },
                 ]}
               />
-              <Text style={styles.etatTexte}>{TEXTES_ETAT[course.etat]}</Text>
+              <Text style={styles.etatTexte}>{TEXTES_ETAT[courseEtat]}</Text>
             </View>
           </View>
 
           <Text style={styles.etatDescription}>
-            {DESCRIPTIONS_ETAT[course.etat]}
+            {DESCRIPTIONS_ETAT[courseEtat]}
           </Text>
 
-          {course.etat !== 'REPOS' && (
-            <View style={styles.courseMetrics}>
-              <View>
-                <Text style={styles.metricLabel}>Temps</Text>
-                <Text style={styles.metricValue}>{formaterTemps(course.tempsEcoule)}</Text>
-              </View>
-              <View style={styles.metricRight}>
-                <Text style={styles.metricLabel}>Revenu estimé</Text>
-                <Text style={styles.revenuValue}>{formaterArgent(course.revenuEstime)}</Text>
-              </View>
-            </View>
-          )}
+          {courseEtat !== 'REPOS' && <MetriquesCourse />}
         </View>
 
         <View style={styles.sectionHeader}>
