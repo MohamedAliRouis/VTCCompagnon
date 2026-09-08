@@ -10,7 +10,12 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatsModal } from '../components/Stats';
-import { useCourseStore, useSettingsStore, useStatsStore } from '../store';
+import {
+  useCourseStore,
+  useSessionStore,
+  useSettingsStore,
+  useStatsStore,
+} from '../store';
 import { useWidgetOverlay } from '../hooks';
 import { COULEURS_ETAT, TEXTES_ETAT } from '../constants';
 import { formaterArgent, formaterTemps } from '../utils/formatters';
@@ -19,6 +24,12 @@ const DESCRIPTIONS_ETAT = {
   REPOS: 'Prêt pour une nouvelle course',
   PICKUP: 'Trajet en cours vers le client',
   EN_COURSE: 'Client à bord',
+} as const;
+
+const TEXTES_SESSION = {
+  HORS_SERVICE: 'HORS SERVICE',
+  EN_SERVICE: 'EN SERVICE',
+  EN_PAUSE: 'EN PAUSE',
 } as const;
 
 export const HomeScreen: React.FC = () => {
@@ -31,6 +42,12 @@ export const HomeScreen: React.FC = () => {
   const statsJour = useStatsStore(state => state.statsJour);
   const chargerStats = useStatsStore(state => state.chargerStats);
   const chargerSettings = useSettingsStore(state => state.chargerSettings);
+  const session = useSessionStore(state => state.session);
+  const commencerService = useSessionStore(state => state.commencerService);
+  const mettreEnPause = useSessionStore(state => state.mettreEnPause);
+  const reprendreService = useSessionStore(state => state.reprendreService);
+  const terminerService = useSessionStore(state => state.terminerService);
+  const chargerSession = useSessionStore(state => state.chargerDepuisStockage);
   const {
     isSupported,
     checkPermission,
@@ -46,8 +63,9 @@ export const HomeScreen: React.FC = () => {
       chargerDepuisStockage(),
       chargerStats(),
       chargerSettings(),
+      chargerSession(),
     ]).catch(error => console.error('Erreur initialisation:', error));
-  }, [chargerDepuisStockage, chargerSettings, chargerStats]);
+  }, [chargerDepuisStockage, chargerSession, chargerSettings, chargerStats]);
 
   useFocusEffect(
     useCallback(() => {
@@ -104,12 +122,115 @@ export const HomeScreen: React.FC = () => {
     setActionOverlayEnCours(false);
   };
 
+  const demanderPause = () => {
+    if (course.etat !== 'REPOS') {
+      Alert.alert(
+        'Course en cours',
+        'Terminez ou annulez la course avant de prendre une pause.',
+      );
+      return;
+    }
+    mettreEnPause();
+  };
+
+  const demanderFinService = () => {
+    if (course.etat !== 'REPOS') {
+      Alert.alert(
+        'Course en cours',
+        'Terminez ou annulez la course avant de clôturer votre service.',
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Terminer le service ?',
+      `Temps travaillé : ${formaterTemps(session.tempsServiceEcoule)}\nPauses : ${formaterTemps(session.tempsPauseCumule + session.tempsPauseEcoule)}`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Terminer', style: 'destructive', onPress: terminerService },
+      ],
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.surtitre}>VTC COMPAGNON</Text>
         <Text style={styles.titre}>Tableau de bord</Text>
         <Text style={styles.sousTitre}>Votre activité en un coup d’œil</Text>
+
+        <View style={styles.sessionCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardLabel}>SESSION DE TRAVAIL</Text>
+            <View
+              style={[
+                styles.sessionBadge,
+                session.etat === 'EN_PAUSE'
+                  ? styles.sessionBadgePause
+                  : session.etat === 'EN_SERVICE'
+                    ? styles.sessionBadgeActive
+                    : styles.sessionBadgeInactive,
+              ]}
+            >
+              <Text style={styles.sessionBadgeText}>{TEXTES_SESSION[session.etat]}</Text>
+            </View>
+          </View>
+
+          {session.etat === 'HORS_SERVICE' ? (
+            <>
+              <Text style={styles.sessionMessage}>
+                Démarrez votre session pour suivre votre temps de travail et vos pauses.
+              </Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={commencerService}
+                style={styles.sessionPrimaryButton}
+              >
+                <Text style={styles.sessionPrimaryButtonText}>Commencer mon service</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.sessionMetrics}>
+                <View>
+                  <Text style={styles.metricLabel}>Temps travaillé</Text>
+                  <Text style={styles.sessionTimeValue}>
+                    {formaterTemps(session.tempsServiceEcoule)}
+                  </Text>
+                </View>
+                <View style={styles.metricRight}>
+                  <Text style={styles.metricLabel}>
+                    {session.etat === 'EN_PAUSE' ? 'Pause actuelle' : 'Pauses cumulées'}
+                  </Text>
+                  <Text style={styles.pauseTimeValue}>
+                    {formaterTemps(
+                      session.etat === 'EN_PAUSE'
+                        ? session.tempsPauseEcoule
+                        : session.tempsPauseCumule,
+                    )}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={session.etat === 'EN_PAUSE' ? reprendreService : demanderPause}
+                style={styles.sessionPrimaryButton}
+              >
+                <Text style={styles.sessionPrimaryButtonText}>
+                  {session.etat === 'EN_PAUSE' ? 'Reprendre mon service' : 'Faire une pause'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={demanderFinService}
+                style={styles.endSessionButton}
+              >
+                <Text style={styles.endSessionButtonText}>Terminer mon service</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         <View style={styles.courseCard}>
           <View style={styles.cardHeader}>
@@ -252,6 +373,82 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     padding: 18,
+    marginTop: 14,
+  },
+  sessionCard: {
+    backgroundColor: '#1a1f30',
+    borderColor: '#3b4967',
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+  },
+  sessionBadge: {
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  sessionBadgeActive: {
+    backgroundColor: '#194b39',
+  },
+  sessionBadgePause: {
+    backgroundColor: '#5b431a',
+  },
+  sessionBadgeInactive: {
+    backgroundColor: '#303749',
+  },
+  sessionBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sessionMessage: {
+    color: '#a8afc0',
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 20,
+  },
+  sessionMetrics: {
+    borderTopColor: '#2a3145',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    paddingTop: 16,
+  },
+  sessionTimeValue: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  pauseTimeValue: {
+    color: '#f2bd62',
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: 3,
+  },
+  sessionPrimaryButton: {
+    alignItems: 'center',
+    backgroundColor: '#4f9df8',
+    borderRadius: 12,
+    justifyContent: 'center',
+    marginTop: 18,
+    minHeight: 56,
+  },
+  sessionPrimaryButtonText: {
+    color: '#07101f',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  endSessionButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  endSessionButtonText: {
+    color: '#d67b82',
+    fontSize: 13,
+    fontWeight: '700',
   },
   cardHeader: {
     alignItems: 'center',
