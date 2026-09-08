@@ -34,21 +34,22 @@ const calculerTemps = (
     return session;
   }
 
-  const pauseEnCours = session.tempsDebutPause
-    ? Math.max(0, Math.floor((maintenant - session.tempsDebutPause) / 1000))
+  // Tout est calculé en millisecondes puis arrondi une seule fois : pendant une
+  // pause, tempsTotalMs et pauseEnCoursMs augmentent du même delta réel, donc
+  // le temps de service reste strictement figé (pas de gigue de ±1 s).
+  const pauseEnCoursMs = session.tempsDebutPause
+    ? Math.max(0, maintenant - session.tempsDebutPause)
     : 0;
-  const tempsTotal = Math.max(
+  const tempsTotalMs = Math.max(0, maintenant - session.tempsDebutService);
+  const tempsServiceMs = Math.max(
     0,
-    Math.floor((maintenant - session.tempsDebutService) / 1000),
+    tempsTotalMs - session.tempsPauseCumule * 1000 - pauseEnCoursMs,
   );
 
   return {
     ...session,
-    tempsServiceEcoule: Math.max(
-      0,
-      tempsTotal - session.tempsPauseCumule - pauseEnCours,
-    ),
-    tempsPauseEcoule: pauseEnCours,
+    tempsServiceEcoule: Math.floor(tempsServiceMs / 1000),
+    tempsPauseEcoule: Math.floor(pauseEnCoursMs / 1000),
   };
 };
 

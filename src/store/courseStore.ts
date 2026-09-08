@@ -80,16 +80,22 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
   majTemps: (tempsEcoule: number) => {
     const { course, tarifs } = get();
+    if (course.etat === 'REPOS' || !course.tempsDebut) {
+      return;
+    }
     const minutes = tempsEcoule / 60;
     const revenu = tarifs.priseEnCharge + (minutes * tarifs.parMinute);
-    
-    const maj = {
-      ...course,
-      tempsEcoule,
-      revenuEstime: revenu,
-    };
-    set({ course: maj });
-    sauvegarderCourseEnCours(maj);
+
+    // Pas de persistance ici : ce tick est purement dérivé de course.tempsDebut,
+    // que chargerDepuisStockage recalcule au redémarrage. On ne persiste que sur
+    // les transitions d'état (demarrerCourse / clientMonte / arrivee / annuler).
+    set({
+      course: {
+        ...course,
+        tempsEcoule,
+        revenuEstime: revenu,
+      },
+    });
   },
 
   setTarifs: (tarifs: Tarifs) => {
