@@ -1,111 +1,321 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStatsStore } from '../store';
+import { useHistoryStore, useSettingsStore } from '../store';
 import { COULEURS } from '../constants';
-import { formaterTemps, formaterArgent, formaterDate } from '../utils/formatters';
+import {
+  formaterTemps,
+  formaterArgent,
+  formaterDate,
+  formaterHeure,
+  getDateJour,
+} from '../utils/formatters';
+import {
+  Periode,
+  AgregatJour,
+  agregerParJour,
+  agregatPeriode,
+  bornesPeriode,
+  decalerPeriode,
+  libellePeriode,
+  grouperParDate,
+} from '../utils/historique';
+
+const PERIODES: { cle: Periode; label: string }[] = [
+  { cle: 'jour', label: 'Jour' },
+  { cle: 'semaine', label: 'Semaine' },
+  { cle: 'mois', label: 'Mois' },
+];
+
+const LETTRES_JOUR = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { historique, statsJour } = useStatsStore();
+  const courses = useHistoryStore(s => s.courses);
+  const sessions = useHistoryStore(s => s.sessions);
+  const agregatsLegacy = useHistoryStore(s => s.agregatsLegacy);
+  const objectif = useSettingsStore(s => s.settings.objectifJournalier);
 
-  // Calcul totaux semaine
-  const totauxSemaine = historique.reduce(
-    (acc, jour) => ({
-      courses: acc.courses + jour.nbCourses,
-      temps: acc.temps + jour.tempsTotal,
-      revenu: acc.revenu + jour.revenuTotal,
-    }),
-    { courses: 0, temps: 0, revenu: 0 }
+  const [periode, setPeriode] = useState<Periode>('semaine');
+  const [ancre, setAncre] = useState(getDateJour());
+  const [jourOuvert, setJourOuvert] = useState<string | null>(null);
+
+  const aujourdhui = getDateJour();
+  const { debut, fin } = useMemo(
+    () => bornesPeriode(periode, ancre),
+    [periode, ancre],
   );
+
+  const parJour = useMemo(
+    () => agregerParJour(courses, sessions, agregatsLegacy),
+    [courses, sessions, agregatsLegacy],
+  );
+  const agregat = useMemo(
+    () => agregatPeriode(parJour, periode, debut, fin),
+    [parJour, periode, debut, fin],
+  );
+  const coursesParJour = useMemo(() => grouperParDate(courses), [courses]);
+  const sessionsParJour = useMemo(() => grouperParDate(sessions), [sessions]);
+
+  const libelle = libellePeriode(periode, debut, fin, aujourdhui);
+  const peutAvancer = fin < aujourdhui;
+
+  const joursActifs = useMemo(
+    () =>
+      agregat.jours
+        .filter(j => j.nbCourses > 0 || j.tempsService > 0)
+        .slice()
+        .reverse(),
+    [agregat],
+  );
+
+  const changerPeriode = (p: Periode) => {
+    setPeriode(p);
+    setAncre(aujourdhui);
+    setJourOuvert(null);
+  };
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingTop: insets.top }}
+      contentContainerStyle={[styles.contenu, { paddingTop: insets.top }]}
     >
-      <Text style={styles.titre}>📅 Historique</Text>
+      <Text style={styles.titre}>Historique</Text>
 
-      {/* Aujourd'hui */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>Aujourd'hui</Text>
-        <View style={styles.carte}>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Courses</Text>
-            <Text style={styles.valeur}>{statsJour.nbCourses}</Text>
-          </View>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Temps</Text>
-            <Text style={styles.valeur}>{formaterTemps(statsJour.tempsTotal)}</Text>
-          </View>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Revenu</Text>
-            <Text style={[styles.valeur, styles.revenu]}>
-              {formaterArgent(statsJour.revenuTotal)}
-            </Text>
-          </View>
-        </View>
+      {/* Sélecteur de période */}
+      <View style={styles.segment}>
+        {PERIODES.map(p => {
+          const actif = p.cle === periode;
+          return (
+            <TouchableOpacity
+              key={p.cle}
+              onPress={() => changerPeriode(p.cle)}
+              style={[styles.segmentBtn, actif && styles.segmentBtnActif]}
+            >
+              <Text
+                style={[
+                  styles.segmentTxt,
+                  actif && styles.segmentTxtActif,
+                ]}
+              >
+                {p.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* Semaine */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>7 derniers jours</Text>
-        <View style={styles.carte}>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Total courses</Text>
-            <Text style={styles.valeur}>{totauxSemaine.courses}</Text>
-          </View>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Temps total</Text>
-            <Text style={styles.valeur}>{formaterTemps(totauxSemaine.temps)}</Text>
-          </View>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Revenu total</Text>
-            <Text style={[styles.valeur, styles.revenu]}>
-              {formaterArgent(totauxSemaine.revenu)}
-            </Text>
-          </View>
-          <View style={styles.ligne}>
-            <Text style={styles.label}>Moyenne / jour</Text>
-            <Text style={styles.valeur}>
-              {historique.length > 0 
-                ? formaterArgent(totauxSemaine.revenu / historique.length)
-                : '0,00 €'}
-            </Text>
-          </View>
-        </View>
+      <View style={styles.nav}>
+        <TouchableOpacity
+          onPress={() => setAncre(a => decalerPeriode(periode, a, -1))}
+          style={styles.navBtn}
+        >
+          <Text style={styles.navFleche}>◄</Text>
+        </TouchableOpacity>
+        <Text style={styles.navLabel}>{libelle}</Text>
+        <TouchableOpacity
+          disabled={!peutAvancer}
+          onPress={() => setAncre(a => decalerPeriode(periode, a, 1))}
+          style={styles.navBtn}
+        >
+          <Text style={[styles.navFleche, !peutAvancer && styles.navFlecheOff]}>
+            ►
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Métriques clés */}
+      <View style={styles.grille}>
+        <Tuile valeur={formaterArgent(agregat.revenu)} label="Revenu" accent />
+        <Tuile valeur={String(agregat.nbCourses)} label="Courses" />
+        <Tuile
+          valeur={formaterTemps(agregat.tempsConduite)}
+          label="Conduite"
+        />
+        <Tuile
+          valeur={`${formaterArgent(agregat.revenuParHeure)}/h`}
+          label="Revenu horaire"
+        />
+        <Tuile
+          valeur={
+            agregat.tempsService > 0
+              ? `${Math.round(agregat.ratioConduite * 100)} %`
+              : '—'
+          }
+          label="Conduite / service"
+        />
+        <Tuile
+          valeur={
+            agregat.nbCourses > 0
+              ? formaterArgent(agregat.revenuMoyenCourse)
+              : '—'
+          }
+          label="Moy. / course"
+        />
+      </View>
+
+      {agregat.meilleurJour && periode !== 'jour' && (
+        <View style={styles.meilleur}>
+          <Text style={styles.meilleurLabel}>Meilleur jour</Text>
+          <Text style={styles.meilleurValeur}>
+            {formaterDate(agregat.meilleurJour.date)} ·{' '}
+            {formaterArgent(agregat.meilleurJour.revenu)}
+          </Text>
+        </View>
+      )}
+
+      {/* Graphe */}
+      {periode !== 'jour' && (
+        <GrapheBarres
+          jours={agregat.jours}
+          periode={periode}
+          objectif={objectif}
+        />
+      )}
 
       {/* Détail par jour */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitre}>Détail par jour</Text>
-        {historique.length === 0 ? (
-          <Text style={styles.vide}>Aucun historique</Text>
-        ) : (
-          historique.map(jour => (
-            <View key={jour.date} style={styles.carteJour}>
-              <Text style={styles.dateJour}>{formaterDate(jour.date)}</Text>
-              <View style={styles.statsJour}>
-                <Text style={styles.statJour} numberOfLines={1}>
-                  {jour.nbCourses} course{jour.nbCourses > 1 ? 's' : ''}
-                </Text>
-                <Text style={[styles.statJour, styles.statJourCentre]} numberOfLines={1}>
-                  {formaterTemps(jour.tempsTotal)}
-                </Text>
-                <Text
-                  style={[styles.statJour, styles.statJourDroite, styles.revenu]}
-                  numberOfLines={1}
-                >
-                  {formaterArgent(jour.revenuTotal)}
-                </Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
+      <Text style={styles.sousTitre}>Détail</Text>
+      {joursActifs.length === 0 ? (
+        <Text style={styles.vide}>Aucune activité sur cette période</Text>
+      ) : (
+        joursActifs.map(j => (
+          <LigneJour
+            key={j.date}
+            jour={j}
+            ouvert={jourOuvert === j.date}
+            onPress={() =>
+              setJourOuvert(cur => (cur === j.date ? null : j.date))
+            }
+            courses={coursesParJour.get(j.date) ?? []}
+            sessions={sessionsParJour.get(j.date) ?? []}
+          />
+        ))
+      )}
     </ScrollView>
   );
 };
+
+// --- sous-composants ---
+
+const Tuile: React.FC<{ valeur: string; label: string; accent?: boolean }> = ({
+  valeur,
+  label,
+  accent,
+}) => (
+  <View style={styles.tuile}>
+    <Text
+      style={[styles.tuileValeur, accent && styles.tuileValeurAccent]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+    >
+      {valeur}
+    </Text>
+    <Text style={styles.tuileLabel}>{label}</Text>
+  </View>
+);
+
+const GrapheBarres: React.FC<{
+  jours: AgregatJour[];
+  periode: Periode;
+  objectif?: number;
+}> = ({ jours, periode, objectif }) => {
+  const max = Math.max(...jours.map(j => j.revenu), objectif ?? 0, 1);
+
+  return (
+    <View style={styles.graphe}>
+      {objectif ? (
+        <Text style={styles.grapheObjectif}>
+          Objectif {formaterArgent(objectif)}/jour
+        </Text>
+      ) : null}
+      <View style={styles.grapheBarres}>
+        {jours.map((j, i) => {
+          const h = (j.revenu / max) * 96;
+          const atteint = objectif ? j.revenu >= objectif : false;
+          return (
+            <View key={j.date} style={styles.grapheColonne}>
+              <View
+                style={[
+                  styles.barre,
+                  {
+                    height: Math.max(j.revenu > 0 ? 3 : 0, h),
+                    backgroundColor: atteint
+                      ? COULEURS.positif
+                      : COULEURS.accent,
+                  },
+                ]}
+              />
+              <Text style={styles.grapheLabel} numberOfLines={1}>
+                {periode === 'semaine'
+                  ? LETTRES_JOUR[i]
+                  : i % 5 === 0
+                    ? String(i + 1)
+                    : ''}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const LigneJour: React.FC<{
+  jour: AgregatJour;
+  ouvert: boolean;
+  onPress: () => void;
+  courses: { id: string; debut: number; duree: number; revenu: number }[];
+  sessions: { id: string; tempsService: number; tempsPause: number }[];
+}> = ({ jour, ouvert, onPress, courses, sessions }) => (
+  <View style={styles.carteJour}>
+    <TouchableOpacity onPress={onPress} style={styles.jourEntete}>
+      <Text style={styles.jourDate}>{formaterDate(jour.date)}</Text>
+      <Text style={styles.jourResume}>
+        {jour.nbCourses} c · {formaterTemps(jour.tempsConduite)} ·{' '}
+        {formaterArgent(jour.revenu)}
+      </Text>
+    </TouchableOpacity>
+
+    {ouvert && (
+      <View style={styles.jourDetail}>
+        {courses.length === 0 && sessions.length === 0 && (
+          <Text style={styles.detailVide}>Pas de détail enregistré</Text>
+        )}
+        {courses
+          .slice()
+          .sort((a, b) => a.debut - b.debut)
+          .map(c => (
+            <View key={c.id} style={styles.detailLigne}>
+              <Text style={styles.detailHeure}>{formaterHeure(c.debut)}</Text>
+              <Text style={styles.detailTexte}>
+                course · {formaterTemps(c.duree)}
+              </Text>
+              <Text style={styles.detailRevenu}>
+                {formaterArgent(c.revenu)}
+              </Text>
+            </View>
+          ))}
+        {sessions.map(s => (
+          <View key={s.id} style={styles.detailLigne}>
+            <Text style={styles.detailHeure}>⏱</Text>
+            <Text style={styles.detailTexte}>
+              service {formaterTemps(s.tempsService)}
+            </Text>
+            <Text style={styles.detailPause}>
+              pauses {formaterTemps(s.tempsPause)}
+            </Text>
+          </View>
+        ))}
+      </View>
+    )}
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -113,44 +323,153 @@ const styles = StyleSheet.create({
     backgroundColor: COULEURS.fond,
     padding: 16,
   },
+  contenu: {
+    paddingBottom: 32,
+  },
   titre: {
     fontSize: 24,
     fontWeight: 'bold',
     color: COULEURS.texte,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitre: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COULEURS.accentClair,
-    marginBottom: 10,
-  },
-  carte: {
+  segment: {
+    flexDirection: 'row',
     backgroundColor: COULEURS.carte,
     borderWidth: 1,
     borderColor: COULEURS.carteBordure,
     borderRadius: 12,
-    padding: 16,
+    padding: 4,
+    gap: 4,
   },
-  ligne: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  segmentBtn: {
+    flex: 1,
     paddingVertical: 8,
+    borderRadius: 9,
+    alignItems: 'center',
   },
-  label: {
-    fontSize: 14,
+  segmentBtnActif: {
+    backgroundColor: COULEURS.accent,
+  },
+  segmentTxt: {
+    fontSize: 13,
+    fontWeight: '700',
     color: COULEURS.texteSecondaire,
   },
-  valeur: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  segmentTxtActif: {
+    color: COULEURS.surAccent,
+  },
+  nav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    marginBottom: 18,
+  },
+  navBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  navFleche: {
+    fontSize: 16,
+    color: COULEURS.accentClair,
+    fontWeight: '800',
+  },
+  navFlecheOff: {
+    color: COULEURS.carteBordure,
+  },
+  navLabel: {
+    fontSize: 15,
+    fontWeight: '800',
     color: COULEURS.texte,
   },
-  revenu: {
+  grille: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  tuile: {
+    flexBasis: '31%',
+    flexGrow: 1,
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+  },
+  tuileValeur: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COULEURS.texte,
+  },
+  tuileValeurAccent: {
     color: COULEURS.positif,
+  },
+  tuileLabel: {
+    fontSize: 11,
+    color: COULEURS.texteFaible,
+    marginTop: 4,
+  },
+  meilleur: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
+    borderRadius: 12,
+  },
+  meilleurLabel: {
+    fontSize: 12,
+    color: COULEURS.texteFaible,
+  },
+  meilleurValeur: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COULEURS.texte,
+  },
+  graphe: {
+    marginTop: 18,
+    backgroundColor: COULEURS.carte,
+    borderWidth: 1,
+    borderColor: COULEURS.carteBordure,
+    borderRadius: 14,
+    padding: 14,
+  },
+  grapheObjectif: {
+    fontSize: 11,
+    color: COULEURS.texteFaible,
+    marginBottom: 10,
+  },
+  grapheBarres: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 116,
+    gap: 4,
+  },
+  grapheColonne: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  barre: {
+    width: '78%',
+    borderRadius: 3,
+  },
+  grapheLabel: {
+    fontSize: 9,
+    color: COULEURS.texteFaible,
+    marginTop: 5,
+  },
+  sousTitre: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COULEURS.texte,
+    marginTop: 24,
+    marginBottom: 10,
   },
   vide: {
     color: COULEURS.texteFaible,
@@ -163,28 +482,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COULEURS.carteBordure,
     borderRadius: 12,
-    padding: 16,
     marginBottom: 8,
+    overflow: 'hidden',
   },
-  dateJour: {
+  jourEntete: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+  },
+  jourDate: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COULEURS.texte,
-    marginBottom: 8,
   },
-  statsJour: {
+  jourResume: {
+    fontSize: 12,
+    color: COULEURS.texteSecondaire,
+  },
+  jourDetail: {
+    borderTopWidth: 1,
+    borderTopColor: COULEURS.separateur,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  detailVide: {
+    fontSize: 12,
+    color: COULEURS.texteFaible,
+    fontStyle: 'italic',
+    paddingVertical: 6,
+  },
+  detailLigne: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 10,
   },
-  statJour: {
+  detailHeure: {
+    fontSize: 12,
+    color: COULEURS.texteFaible,
+    width: 44,
+  },
+  detailTexte: {
     flex: 1,
     fontSize: 12,
     color: COULEURS.texteSecondaire,
   },
-  statJourCentre: {
-    textAlign: 'center',
+  detailRevenu: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COULEURS.positif,
   },
-  statJourDroite: {
-    textAlign: 'right',
+  detailPause: {
+    fontSize: 12,
+    color: COULEURS.alerte,
   },
 });

@@ -15,21 +15,30 @@ import { COULEURS } from '../constants';
 
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { settings, setTarifs, setNotifications } = useSettingsStore();
+  const { settings, setTarifs, setNotifications, setObjectifJournalier } =
+    useSettingsStore();
   const [priseEnCharge, setPriseEnCharge] = React.useState(
     settings.tarifs.priseEnCharge.toString()
   );
   const [parMinute, setParMinute] = React.useState(
     settings.tarifs.parMinute.toString()
   );
+  const [objectif, setObjectif] = React.useState(
+    settings.objectifJournalier?.toString() ?? ''
+  );
 
   // Les settings se chargent en asynchrone : resynchroniser les champs quand
-  // les vrais tarifs sauvegardés arrivent (sinon ils restent sur les valeurs
-  // par défaut affichées au premier render).
+  // les vraies valeurs sauvegardées arrivent (sinon ils restent sur les
+  // valeurs par défaut affichées au premier render).
   React.useEffect(() => {
     setPriseEnCharge(settings.tarifs.priseEnCharge.toString());
     setParMinute(settings.tarifs.parMinute.toString());
-  }, [settings.tarifs.priseEnCharge, settings.tarifs.parMinute]);
+    setObjectif(settings.objectifJournalier?.toString() ?? '');
+  }, [
+    settings.tarifs.priseEnCharge,
+    settings.tarifs.parMinute,
+    settings.objectifJournalier,
+  ]);
 
   const sauvegarderTarifs = () => {
     const pec = parseFloat(priseEnCharge.replace(',', '.'));
@@ -47,6 +56,20 @@ export const SettingsScreen: React.FC = () => {
     });
 
     Alert.alert('Succès', 'Tarifs mis à jour');
+  };
+
+  const sauvegarderObjectif = () => {
+    const trim = objectif.trim();
+    if (trim === '') {
+      setObjectifJournalier(null);
+      return;
+    }
+    const val = parseFloat(trim.replace(',', '.'));
+    if (isNaN(val) || val < 0) {
+      Alert.alert('Erreur', 'Objectif invalide');
+      return;
+    }
+    setObjectifJournalier(val);
   };
 
   return (
@@ -87,6 +110,24 @@ export const SettingsScreen: React.FC = () => {
         <TouchableOpacity style={styles.bouton} onPress={sauvegarderTarifs}>
           <Text style={styles.texteBouton}>Sauvegarder les tarifs</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Objectif */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitre}>Objectif journalier</Text>
+        <View style={styles.champ}>
+          <Text style={styles.label}>Revenu cible par jour (€) — optionnel</Text>
+          <TextInput
+            style={styles.input}
+            value={objectif}
+            onChangeText={setObjectif}
+            onBlur={sauvegarderObjectif}
+            onSubmitEditing={sauvegarderObjectif}
+            keyboardType="decimal-pad"
+            placeholder="ex. 150"
+            placeholderTextColor={COULEURS.texteFaible}
+          />
+        </View>
       </View>
 
       {/* Préférences */}
