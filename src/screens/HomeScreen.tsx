@@ -4,6 +4,7 @@ import {
   AppState,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -335,26 +336,40 @@ export const HomeScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={styles.courseCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardLabel}>COURSE ACTUELLE</Text>
-            <View style={styles.etatContainer}>
-              <View
-                style={[
-                  styles.etatDot,
-                  { backgroundColor: COULEURS_ETAT[courseEtat] },
-                ]}
-              />
-              <Text style={styles.etatTexte}>{TEXTES_ETAT[courseEtat]}</Text>
+        {/* Course : pleine carte seulement quand il se passe quelque chose.
+            Au repos elle ne portait qu'une ligne de texte dans un grand bloc ;
+            hors service elle n'a aucun sens (on ne peut pas démarrer de course). */}
+        {courseEtat !== 'REPOS' ? (
+          <View style={styles.courseCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardLabel}>COURSE ACTUELLE</Text>
+              <View style={styles.etatContainer}>
+                <View
+                  style={[
+                    styles.etatDot,
+                    { backgroundColor: COULEURS_ETAT[courseEtat] },
+                  ]}
+                />
+                <Text style={styles.etatTexte}>{TEXTES_ETAT[courseEtat]}</Text>
+              </View>
             </View>
+
+            <Text style={styles.etatDescription}>
+              {DESCRIPTIONS_ETAT[courseEtat]}
+            </Text>
+
+            <MetriquesCourse />
           </View>
-
-          <Text style={styles.etatDescription}>
-            {DESCRIPTIONS_ETAT[courseEtat]}
-          </Text>
-
-          {courseEtat !== 'REPOS' && <MetriquesCourse />}
-        </View>
+        ) : sessionEtat !== 'HORS_SERVICE' ? (
+          <View style={styles.courseLigne}>
+            <View
+              style={[styles.etatDot, { backgroundColor: COULEURS_ETAT.REPOS }]}
+            />
+            <Text style={styles.courseLigneTexte}>
+              {DESCRIPTIONS_ETAT.REPOS}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitre}>Aujourd’hui</Text>
@@ -397,50 +412,34 @@ export const HomeScreen: React.FC = () => {
           </View>
         ) : null}
 
-        <View style={styles.overlayCard}>
-          <View style={styles.overlayInfo}>
-            <View style={styles.overlayTitleRow}>
+        {/* Widget : un réglage on/off, donc un interrupteur plutôt qu'un pavé
+            avec gros bouton. Contrôlé par overlayActif : si l'activation
+            échoue (permission refusée), il reste simplement éteint. */}
+        <View style={styles.widgetLigne}>
+          <View style={styles.widgetInfo}>
+            <View style={styles.widgetTitreLigne}>
               <View
                 style={[
                   styles.serviceDot,
                   overlayActif ? styles.serviceActif : styles.serviceInactif,
                 ]}
               />
-              <Text style={styles.overlayTitre}>Widget flottant</Text>
+              <Text style={styles.widgetTitre}>Widget flottant</Text>
             </View>
-            <Text style={styles.overlayDescription}>
+            <Text style={styles.widgetSousTitre}>
               {overlayActif
-                ? 'Visible au-dessus de vos applications de conduite'
-                : 'Activez-le avant de commencer votre service'}
+                ? 'Affiché par-dessus la navigation'
+                : 'À activer avant de prendre la route'}
             </Text>
           </View>
-
-          <TouchableOpacity
-            accessibilityRole="button"
+          <Switch
+            accessibilityLabel="Widget flottant"
+            value={overlayActif}
             disabled={actionOverlayEnCours}
-            onPress={overlayActif ? desactiverOverlay : activerOverlay}
-            style={[
-              styles.overlayButton,
-              overlayActif
-                ? styles.overlayButtonSecondary
-                : styles.overlayButtonPrimary,
-              actionOverlayEnCours && styles.buttonDisabled,
-            ]}
-          >
-            <Text
-              style={
-                overlayActif
-                  ? styles.overlayButtonSecondaryText
-                  : styles.overlayButtonPrimaryText
-              }
-            >
-              {actionOverlayEnCours
-                ? 'Patientez…'
-                : overlayActif
-                  ? 'Masquer'
-                  : 'Afficher le widget'}
-            </Text>
-          </TouchableOpacity>
+            onValueChange={v => (v ? activerOverlay() : desactiverOverlay())}
+            trackColor={{ false: COULEURS.separateur, true: COULEURS.accent }}
+            thumbColor={COULEURS.texte}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -714,20 +713,50 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 6,
   },
-  overlayCard: {
+  courseLigne: {
+    alignItems: 'center',
     backgroundColor: COULEURS.carte,
     borderColor: COULEURS.carteBordure,
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
+    flexDirection: 'row',
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  courseLigneTexte: {
+    color: COULEURS.texteSecondaire,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  widgetLigne: {
+    alignItems: 'center',
+    backgroundColor: COULEURS.carte,
+    borderColor: COULEURS.carteBordure,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
     marginTop: 24,
-    padding: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  overlayInfo: {
-    marginBottom: 16,
+  widgetInfo: {
+    flex: 1,
+    paddingRight: 12,
   },
-  overlayTitleRow: {
+  widgetTitreLigne: {
     alignItems: 'center',
     flexDirection: 'row',
+  },
+  widgetTitre: {
+    color: COULEURS.texte,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  widgetSousTitre: {
+    color: COULEURS.texteSecondaire,
+    fontSize: 12,
+    marginTop: 4,
   },
   serviceDot: {
     borderRadius: 5,
@@ -740,43 +769,5 @@ const styles = StyleSheet.create({
   },
   serviceInactif: {
     backgroundColor: COULEURS.texteFaible,
-  },
-  overlayTitre: {
-    color: COULEURS.texte,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  overlayDescription: {
-    color: COULEURS.texteSecondaire,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 7,
-  },
-  overlayButton: {
-    alignItems: 'center',
-    borderRadius: 12,
-    justifyContent: 'center',
-    minHeight: 56,
-  },
-  overlayButtonPrimary: {
-    backgroundColor: COULEURS.accent,
-  },
-  overlayButtonSecondary: {
-    backgroundColor: COULEURS.boutonSecondaire,
-    borderColor: COULEURS.boutonSecondaireBordure,
-    borderWidth: 1,
-  },
-  overlayButtonPrimaryText: {
-    color: COULEURS.surAccent,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  overlayButtonSecondaryText: {
-    color: COULEURS.texte,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  buttonDisabled: {
-    opacity: 0.55,
   },
 });
