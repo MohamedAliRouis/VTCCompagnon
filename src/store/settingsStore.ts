@@ -12,6 +12,8 @@ interface SettingsState {
   setObjectifJournalier: (objectif: number | null) => Promise<void>;
   setRetentionJours: (jours: number) => Promise<void>;
   setDebutSemaine: (debut: DebutSemaine) => Promise<void>;
+  setRappelPauseActif: (actif: boolean) => Promise<void>;
+  setRappelPauseHeures: (heures: number) => Promise<void>;
 }
 
 const settingsInitiaux: Settings = {
@@ -51,5 +53,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setRetentionJours: jours => patch({ retentionJours: jours }),
 
     setDebutSemaine: debut => patch({ debutSemaine: debut }),
+
+    setRappelPauseActif: actif => patch({ rappelPauseActif: actif }),
+
+    setRappelPauseHeures: heures => patch({ rappelPauseHeures: heures }),
   };
 });

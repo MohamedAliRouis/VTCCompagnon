@@ -22,6 +22,12 @@ export const RETENTIONS_POSSIBLES = [30, 90, 365] as const;
 // Fenêtre pendant laquelle une course terminée par erreur reste annulable.
 export const DUREE_ANNULATION_MS = 10_000;
 
+// Rappel de pause : seuil de service continu avant la 1re notification, puis
+// relance tant que le chauffeur ne s'arrête pas.
+export const RAPPEL_PAUSE_HEURES_DEFAUT = 3;
+export const RAPPEL_PAUSE_HEURES_POSSIBLES = [2, 3, 4] as const;
+export const RAPPEL_PAUSE_RELANCE_MS = 30 * 60_000;
+
 // Tarifs par défaut (modifiables dans Settings)
 export const TARIFS_DEFAUT: Tarifs = {
   priseEnCharge: 2.50,

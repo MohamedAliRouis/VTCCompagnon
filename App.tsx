@@ -12,6 +12,7 @@ import { HomeScreen, HistoryScreen, SettingsScreen } from './src/screens';
 import {
   useBootstrap,
   useCourseTimer,
+  useRappelPause,
   useSessionTimer,
   useWidgetOverlayBridge,
 } from './src/hooks';
@@ -29,6 +30,7 @@ function App() {
   useCourseTimer();
   useSessionTimer();
   useWidgetOverlayBridge();
+  useRappelPause();
 
   return (
     <SafeAreaProvider>

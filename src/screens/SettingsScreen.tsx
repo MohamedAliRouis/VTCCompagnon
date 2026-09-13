@@ -7,10 +7,30 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Switch,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHistoryStore, useSettingsStore, useStatsStore } from '../store';
-import { COULEURS, RETENTION_JOURS, RETENTIONS_POSSIBLES } from '../constants';
+import {
+  COULEURS,
+  RETENTION_JOURS,
+  RETENTIONS_POSSIBLES,
+  RAPPEL_PAUSE_HEURES_DEFAUT,
+  RAPPEL_PAUSE_HEURES_POSSIBLES,
+} from '../constants';
+
+// Android 13+ exige une autorisation explicite pour afficher des notifications.
+const autoriserNotifications = async (): Promise<boolean> => {
+  if (Platform.OS !== 'android' || Platform.Version < 33) {
+    return true;
+  }
+  const resultat = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+  );
+  return resultat === PermissionsAndroid.RESULTS.GRANTED;
+};
 
 // --- petits composants ---
 
@@ -113,10 +133,30 @@ export const SettingsScreen: React.FC = () => {
   const setObjectifJournalier = useSettingsStore(s => s.setObjectifJournalier);
   const setRetentionJours = useSettingsStore(s => s.setRetentionJours);
   const setDebutSemaine = useSettingsStore(s => s.setDebutSemaine);
+  const setRappelPauseActif = useSettingsStore(s => s.setRappelPauseActif);
+  const setRappelPauseHeures = useSettingsStore(s => s.setRappelPauseHeures);
   const effacerHistorique = useHistoryStore(s => s.effacer);
   const resetJour = useStatsStore(s => s.resetJour);
 
   const retention = settings.retentionJours ?? RETENTION_JOURS;
+  const rappelActif = settings.rappelPauseActif ?? false;
+  const rappelHeures = settings.rappelPauseHeures ?? RAPPEL_PAUSE_HEURES_DEFAUT;
+
+  const basculerRappel = async (actif: boolean) => {
+    if (!actif) {
+      setRappelPauseActif(false);
+      return;
+    }
+    if (await autoriserNotifications()) {
+      setRappelPauseActif(true);
+    } else {
+      Alert.alert(
+        'Notifications refusées',
+        "Sans cette autorisation, le rappel ne peut pas s'afficher. Vous pouvez " +
+          "l'accorder dans les réglages Android de l'application.",
+      );
+    }
+  };
 
   const confirmerEffacement = () => {
     Alert.alert(
@@ -179,6 +219,38 @@ export const SettingsScreen: React.FC = () => {
           optionnel
           placeholder="ex. 150"
         />
+      </Carte>
+
+      <Carte
+        titre="Bien-être"
+        hint="Une notification vous invite à souffler après ce temps de service sans pause, puis toutes les 30 min tant que vous continuez."
+      >
+        <View style={styles.ligneOption}>
+          <Text style={styles.labelOption}>Rappel de pause</Text>
+          <Switch
+            value={rappelActif}
+            onValueChange={basculerRappel}
+            trackColor={{ false: COULEURS.separateur, true: COULEURS.accent }}
+            thumbColor={COULEURS.texte}
+          />
+        </View>
+        {rappelActif ? (
+          <>
+            <Text style={styles.label}>Après</Text>
+            <Segmente
+              options={[
+                // En build de dev uniquement : permet de tester sans attendre 2 h.
+                ...(__DEV__ ? [{ cle: 1 / 60, label: '1 min' }] : []),
+                ...RAPPEL_PAUSE_HEURES_POSSIBLES.map(h => ({
+                  cle: h as number,
+                  label: `${h} h`,
+                })),
+              ]}
+              valeur={rappelHeures}
+              onChange={setRappelPauseHeures}
+            />
+          </>
+        ) : null}
       </Carte>
 
       <Carte titre="Affichage">
@@ -320,6 +392,17 @@ const styles = StyleSheet.create({
     color: COULEURS.danger,
     fontSize: 14,
     fontWeight: '700',
+  },
+  ligneOption: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 14,
+  },
+  labelOption: {
+    color: COULEURS.texte,
+    fontSize: 15,
+    fontWeight: '600',
   },
   aPropos: {
     fontSize: 14,

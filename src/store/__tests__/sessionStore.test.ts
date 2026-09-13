@@ -58,6 +58,7 @@ describe('démarrage du service', () => {
     expect(session().tempsDebutService).toBe(T0 + 5_000);
     expect(session().tempsDebutPause).toBeNull();
     expect(session().tempsPauseCumule).toBe(0);
+    expect(session().tempsDerniereReprise).toBe(T0 + 5_000);
     expect(storage.sauvegarderSessionTravail).toHaveBeenCalled();
   });
 
@@ -130,6 +131,8 @@ describe('reprise', () => {
     expect(session().tempsDebutPause).toBeNull();
     expect(session().tempsPauseEcoule).toBe(0);
     expect(session().tempsPauseCumule).toBe(45);
+    // le tronçon continu (base du rappel de pause) repart de la reprise
+    expect(session().tempsDerniereReprise).toBe(T0 + 60_000 + 45_000);
 
     setNow(T0 + 60_000 + 45_000 + 15_000);
     store().majTemps(Date.now());
