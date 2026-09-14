@@ -24,6 +24,7 @@ const creerSessionInitiale = (): SessionTravail => ({
   tempsServiceEcoule: 0,
   tempsPauseEcoule: 0,
   tempsPauseCumule: 0,
+  tempsDerniereReprise: null,
   date: getDateJour(),
 });
 
@@ -63,6 +64,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       ...creerSessionInitiale(),
       etat: 'EN_SERVICE',
       tempsDebutService: maintenant,
+      tempsDerniereReprise: maintenant,
     };
     set({ session });
     sauvegarderSessionTravail(session);
@@ -105,6 +107,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         tempsDebutPause: null,
         tempsPauseEcoule: 0,
         tempsPauseCumule: session.tempsPauseCumule + dureePause,
+        tempsDerniereReprise: maintenant,
       },
       maintenant,
     );

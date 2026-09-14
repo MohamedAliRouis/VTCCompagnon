@@ -19,6 +19,10 @@ export interface SessionTravail {
   tempsServiceEcoule: number;
   tempsPauseEcoule: number;
   tempsPauseCumule: number;
+  // Début du tronçon de service en cours : début du service, ou fin de la
+  // dernière pause. Base du rappel de pause. Absent des sessions persistées
+  // avant son introduction : retomber sur tempsDebutService.
+  tempsDerniereReprise?: number | null;
   date: string;
 }
 
@@ -77,4 +81,6 @@ export interface Settings {
   objectifJournalier?: number; // revenu cible du jour, en €
   retentionJours?: number; // jours de journal conservés (défaut RETENTION_JOURS)
   debutSemaine?: DebutSemaine; // défaut 'lundi'
+  rappelPauseActif?: boolean; // défaut false
+  rappelPauseHeures?: number; // défaut RAPPEL_PAUSE_HEURES_DEFAUT
 }

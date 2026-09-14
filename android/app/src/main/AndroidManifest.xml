@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
       android:name=".MainApplication"
@@ -50,6 +51,11 @@
           <action android:name="com.vtccompagnon.ACTION_SECONDAIRE" />
         </intent-filter>
       </receiver>
-        
+
+      <!-- Rappel « prenez une pause », déclenché par AlarmManager -->
+      <receiver
+        android:name=".rappel.RappelPauseReceiver"
+        android:exported="false" />
+
     </application>
 </manifest>

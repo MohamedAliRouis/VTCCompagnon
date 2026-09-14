@@ -44,3 +44,16 @@ describe('settingsStore', () => {
     expect(settings().retentionJours).toBe(30);
   });
 });
+
+describe('rappel de pause', () => {
+  it('setRappelPauseActif et setRappelPauseHeures persistent sans toucher au reste', async () => {
+    await useSettingsStore.getState().setRetentionJours(30);
+    await useSettingsStore.getState().setRappelPauseActif(true);
+    await useSettingsStore.getState().setRappelPauseHeures(4);
+
+    expect(settings().rappelPauseActif).toBe(true);
+    expect(settings().rappelPauseHeures).toBe(4);
+    expect(settings().retentionJours).toBe(30);
+    expect(storage.sauvegarderSettings).toHaveBeenLastCalledWith(settings());
+  });
+});
